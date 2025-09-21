@@ -1,0 +1,8 @@
+[target.i686-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/DEF:d3d9.def"]
+
+[target.i686-pc-windows-gnu]
+rustflags = ["-C", "link-arg=--def=d3d9.def"]
+
+[build]
+target = "i686-pc-windows-gnu"

@@ -1,0 +1,4 @@
+{
+  "rust-analyzer.cargo.target": "i686-pc-windows-gnu",
+  "rust-analyzer.check.target": "i686-pc-windows-gnu"
+}
