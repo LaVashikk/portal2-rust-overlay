@@ -10,16 +10,18 @@ use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR, WM_KEYU
 
 mod proxy;
 mod hooks;
-pub mod renderer;
+mod renderer;
 mod logger;
 
-// --- APP ---
 // The global, thread-safe instance of the entire overlay application.
 // This serves as the foundation for the UI. To add new windows or views,
 // implement them in the `overlay` module and register them in `UiManager::new()`.
 static OVERLAY_APP: OnceLock<Mutex<UiManager>> = OnceLock::new();
 
-/// todo
+/// The core controller for the UI overlay.
+///
+/// Owns all windows, manages global UI state (e.g., input focus),
+/// and provides access to the game engine API.
 pub struct UiManager {
     windows: Vec<Box<dyn overlay_ui::Window + Send + Sync>>,
     engine_instance: Engine,
@@ -32,10 +34,7 @@ pub struct UiManager {
 impl UiManager {
     pub fn new(engine_instance: Engine) -> Self {
         Self {
-            windows: vec![
-                Box::new(overlay_ui::OverlayText::default())
-                // todo!
-            ],
+            windows: overlay_ui::regist_windows(),
             shared_state: overlay_ui::SharedState::default(),
             engine_instance,
             is_focused: false,
@@ -47,7 +46,7 @@ impl UiManager {
         for window in self.windows.iter_mut() {
             if window.is_open() {
                 // eprintln!("-- draw window: {:?}", window);
-                window.draw(ctx, &mut self.shared_state);
+                window.draw(ctx, &mut self.shared_state, &self.engine_instance);
             }
         }
     }
@@ -148,7 +147,7 @@ fn initialize_systems() {
 
 
 fn initialize_render(hwnd: HWND, device: &windows::Win32::Graphics::Direct3D9::IDirect3DDevice9) {
-    renderer::initialize(hwnd, device); // todo
+    renderer::initialize(hwnd, device);
     log::info!("Renderer initialized successfully.");
 }
 

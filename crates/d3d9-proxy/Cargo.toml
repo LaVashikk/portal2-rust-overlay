@@ -6,7 +6,7 @@ version.workspace = true
 [lints]
 workspace = true
 
-[lib] # todo
+[lib]
 crate-type = ["cdylib"]
 
 [dependencies]

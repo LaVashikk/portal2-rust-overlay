@@ -112,9 +112,6 @@ impl IVEngineClient {
         if let Ok(c_str) = std::ffi::CString::new(cmd) {
             // SAFETY: `this` is valid, c_str is valid for this scope.
             unsafe { (self.execute_client_cmd_unrestricted)(self.this, c_str.as_ptr()) };
-        } else {
-            // todo
-            // log::error!("Attempted to execute a command with a null byte: {}", cmd);
         }
     }
 

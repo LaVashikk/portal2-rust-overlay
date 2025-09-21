@@ -58,7 +58,7 @@ pub static D3D9_PROXY: LazyLock<D3d9Functions> = LazyLock::new(|| {
                 "Cannot find function {:?} in original d3d9.dll\0",
                 String::from_utf8_lossy(name)
             );
-            // let error_msg = std::ffi::CString::new(error_message).unwrap(); // todo
+            log::error!("{}", error_message);
             unsafe {
                 MessageBoxA(
                     None,
