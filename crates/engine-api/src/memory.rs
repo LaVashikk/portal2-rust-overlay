@@ -7,21 +7,21 @@ use windows::core::PCSTR;
 /// `module_name` must be a null-terminated string, e.g., b"engine.dll\0".
 pub unsafe fn get_module_memory_range(module_name: &'static [u8]) -> Option<(*const u8, usize)> {
     // 1. Get the module handle
-    let module_handle = match GetModuleHandleA(PCSTR(module_name.as_ptr())) {
+    let module_handle = match unsafe { GetModuleHandleA(PCSTR(module_name.as_ptr())) } {
         Ok(handle) if !handle.is_invalid() => handle,
         _ => return None,
     };
 
     // 2. Get module information (base address, size)
     let mut module_info = MODULEINFO::default();
-    let process_handle = GetCurrentProcess();
+    let process_handle = unsafe { GetCurrentProcess() };
 
-    if GetModuleInformation(
+    if unsafe { GetModuleInformation(
         process_handle,
         module_handle,
         &mut module_info,
         std::mem::size_of::<MODULEINFO>() as u32,
-    ).is_ok() {
+    ).is_ok() } {
         let base = module_info.lpBaseOfDll as *const u8;
         let size = module_info.SizeOfImage as usize;
         Some((base, size))

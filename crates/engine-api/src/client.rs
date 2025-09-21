@@ -1,6 +1,6 @@
 use std::ffi::{c_char, c_int};
 
-use crate::engine::types::{PlayerInfo, QAngle};
+use super::types::{PlayerInfo, QAngle};
 
 // Opaque type for the `this` pointer.
 #[repr(C)] pub(crate) struct RawIVEngineClient { _private: [u8; 0] }
@@ -113,7 +113,8 @@ impl IVEngineClient {
             // SAFETY: `this` is valid, c_str is valid for this scope.
             unsafe { (self.execute_client_cmd_unrestricted)(self.this, c_str.as_ptr()) };
         } else {
-            log::error!("Attempted to execute a command with a null byte: {}", cmd);
+            // todo
+            // log::error!("Attempted to execute a command with a null byte: {}", cmd);
         }
     }
 

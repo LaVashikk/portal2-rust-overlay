@@ -44,7 +44,7 @@ static O_PRESENT: LazyLock<Mutex<Option<FnPresent>>> = LazyLock::new(|| Mutex::n
 
 /// Entry point for hooking. Called from `lib.rs` after `Direct3DCreate9` returns.
 /// This function hooks ONLY `CreateDevice`.
-pub unsafe fn install(d3d9: *mut IDirect3D9) {
+pub unsafe fn install(d3d9: *mut IDirect3D9) { unsafe {
     let vtable_ptr = *(d3d9 as *mut *mut usize);
     let create_device_fn_ptr_location = vtable_ptr.add(16); // IDirect3D9::CreateDevice is at index 16
 
@@ -70,7 +70,7 @@ pub unsafe fn install(d3d9: *mut IDirect3D9) {
     ).unwrap();
 
     log::info!("[HOOK] IDirect3D9::CreateDevice hooked.");
-}
+}}
 
 
 // ===================================================================================
@@ -87,7 +87,7 @@ unsafe extern "system" fn hooked_create_device(
     behaviorflags: u32,
     ppresentationparameters: *mut D3DPRESENT_PARAMETERS,
     ppreturneddeviceinterface: *mut Option<IDirect3DDevice9>,
-) -> HRESULT {
+) -> HRESULT { unsafe {
     // First, let the game create the device by calling the original function.
     let result = O_CREATE_DEVICE.unwrap()(
         this,
@@ -126,7 +126,7 @@ unsafe extern "system" fn hooked_create_device(
             // and this entire block is guarded by checking `is_none()`, ensuring that multiple threads
             // or multiple calls to `hooked_create_device` do not race to initialize `O_RESET`.
             #[allow(static_mut_refs)]
-            if O_RESET.is_none() {
+            if  O_RESET.is_none() {
                 O_RESET = Some(std::mem::transmute(reset_fn_ptr_location.read()));
 
                 let mut old_protect = PAGE_PROTECTION_FLAGS(0);
@@ -138,17 +138,17 @@ unsafe extern "system" fn hooked_create_device(
         }
     }
     result
-}
+}}
 
 /// Our hooked `Reset`. Runs on resolution change, etc.
 unsafe extern "system" fn hooked_reset(
     this: IDirect3DDevice9,
     ppresentationparameters: *mut D3DPRESENT_PARAMETERS,
 ) -> HRESULT {
-    crate::renderer::handle_device_reset();
+    // crate::renderer::handle_device_reset(); // todo
 
     // Call the original `Reset` function.
-    O_RESET.unwrap()(this, ppresentationparameters)
+    unsafe { O_RESET.unwrap()(this, ppresentationparameters) }
 }
 
 
@@ -167,14 +167,14 @@ unsafe extern "system" fn hooked_present(
         crate::initialize_systems();
     });
 
-    crate::renderer::render(&this);
+    // crate::renderer::render(&this); // todo
 
     // Call the original `Present` function to let the game render.
-    O_PRESENT.lock().unwrap().unwrap()(
+    unsafe { O_PRESENT.lock().unwrap().unwrap()(
         this,
         psourcerect,
         pdestrect,
         hdestwindowoverride,
         pdirtyregion,
-    )
+    ) }
 }

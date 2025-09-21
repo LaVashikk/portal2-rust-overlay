@@ -16,7 +16,7 @@ unsafe extern "stdcall" fn hooked_wndproc( // todo: move it in hooks.rs
     lparam: LPARAM,
 ) -> LRESULT {
     if umsg == 533 { // lose mouse capture
-        return CallWindowProcW(O_WNDPROC.unwrap(), hwnd, umsg, wparam, lparam);
+        return unsafe { CallWindowProcW(O_WNDPROC.unwrap(), hwnd, umsg, wparam, lparam) };
     }
 
     // pass the message to it.
@@ -31,7 +31,7 @@ unsafe extern "stdcall" fn hooked_wndproc( // todo: move it in hooks.rs
         // For safety, use try_lock
         match app_mutex.try_lock() {
             Ok(mut app) => {
-                should_pass_to_game = app.on_input(umsg, wparam, lparam);
+                // should_pass_to_game = app.on_input(umsg, wparam, lparam); // todo
             },
             Err(e) => {
                 // debug stuff
@@ -43,7 +43,7 @@ unsafe extern "stdcall" fn hooked_wndproc( // todo: move it in hooks.rs
     if !should_pass_to_game {
         LRESULT(0)
     } else {
-        CallWindowProcW(O_WNDPROC.unwrap(), hwnd, umsg, wparam, lparam)
+        unsafe { CallWindowProcW(O_WNDPROC.unwrap(), hwnd, umsg, wparam, lparam) }
     }
 }
 
