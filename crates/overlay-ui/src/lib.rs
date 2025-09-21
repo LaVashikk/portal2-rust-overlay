@@ -4,7 +4,6 @@ use egui::Context;
 #[derive(Debug, Default, Clone)]
 pub struct SharedState {
     pub is_overlay_focused: bool, // todo: namening?
-    pub open_counter: u64,
 }
 
 /// Trait that every window must implement.
@@ -41,7 +40,7 @@ impl Window for OverlayText {
         ctx.debug_painter().text(
             egui::pos2(screen_rect.left() + 10.0, screen_rect.bottom() - 10.0),
             egui::Align2::LEFT_BOTTOM,
-            "IN-GAME CUSTOM OVERLAY!",
+            "UPDATED CUSTOM OVERLAY!",
             egui::FontId::proportional(20.0),
             egui::Color32::ORANGE,
         );

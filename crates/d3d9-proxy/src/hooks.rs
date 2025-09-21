@@ -145,7 +145,7 @@ unsafe extern "system" fn hooked_reset(
     this: IDirect3DDevice9,
     ppresentationparameters: *mut D3DPRESENT_PARAMETERS,
 ) -> HRESULT {
-    // crate::renderer::handle_device_reset(); // todo
+    crate::renderer::handle_device_reset();
 
     // Call the original `Reset` function.
     unsafe { O_RESET.unwrap()(this, ppresentationparameters) }
@@ -167,7 +167,7 @@ unsafe extern "system" fn hooked_present(
         crate::initialize_systems();
     });
 
-    // crate::renderer::render(&this); // todo
+    crate::renderer::render(&this);
 
     // Call the original `Present` function to let the game render.
     unsafe { O_PRESENT.lock().unwrap().unwrap()(

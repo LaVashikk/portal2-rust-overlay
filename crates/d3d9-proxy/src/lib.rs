@@ -3,9 +3,10 @@
 
 use std::sync::{Mutex, OnceLock};
 use engine_api::Engine;
-use windows::Win32::Foundation::{BOOL, HMODULE, HWND};
+use windows::Win32::Foundation::{BOOL, HMODULE, HWND, LPARAM, WPARAM};
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
-use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR};
+use windows::Win32::UI::Input::KeyboardAndMouse::VK_F3;
+use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN};
 
 mod proxy;
 mod hooks;
@@ -16,7 +17,7 @@ mod logger;
 // The global, thread-safe instance of the entire overlay application.
 // This serves as the foundation for the UI. To add new windows or views,
 // implement them in the `overlay` module and register them in `UiManager::new()`.
-static OVERLAY_APP: OnceLock<Mutex<UiManager>> = OnceLock::new(); // todo
+static OVERLAY_APP: OnceLock<Mutex<UiManager>> = OnceLock::new();
 
 /// todo
 pub struct UiManager {
@@ -32,6 +33,7 @@ impl UiManager {
     pub fn new(engine_instance: Engine) -> Self {
         Self {
             windows: vec![
+                Box::new(overlay_ui::OverlayText::default())
                 // todo!
             ],
             shared_state: overlay_ui::SharedState::default(),
@@ -58,58 +60,52 @@ impl UiManager {
     /// # Returns
     /// * `true` - if the input should be passed to the game.
     /// * `false` - if the input should be "eaten" (blocked).
-    pub fn x() {}
-    // pub fn on_input(&mut self, umsg: u32, wparam: WPARAM, _lparam: LPARAM) -> bool {
-        // if umsg == WM_KEYUP || umsg == WM_SYSKEYDOWN {
-        //     if wparam.0 as u16 == VK_F3.0 {
-        //         self.toggle_focus();
-        //         return false;
-        //     }
-        // }
+    pub fn on_input(&mut self, umsg: u32, wparam: WPARAM, _lparam: LPARAM) -> bool {
+        if umsg == WM_KEYUP || umsg == WM_SYSKEYDOWN {
+            if wparam.0 as u16 == VK_F3.0 {
+                self.toggle_focus();
+                return false;
+            }
+        }
 
         // todo: if right mouse button is held down and focused - give mouse input
 
-        // if self.is_focused {
-        //     match umsg {
-        //         // "Eat" these messages so that the game doesn't receive them
-        //         WM_MOUSEMOVE | WM_LBUTTONDOWN | WM_LBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP
-        //         | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MOUSEWHEEL => {
-        //             return false;
-        //         }
-        //         _ => {}
-        //     }
-        // }
+        if self.is_focused {
+            match umsg {
+                // "Eat" these messages so that the game doesn't receive them
+                WM_MOUSEMOVE | WM_LBUTTONDOWN | WM_LBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP
+                | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MOUSEWHEEL => {
+                    return false;
+                }
+                _ => {}
+            }
+        }
 
-    //     true
-    // }
+        true
+    }
 
 
-    // pub fn toggle_focus(&mut self) {
-    //     self.is_focused = !self.is_focused;
-    //     self.shared_state.is_overlay_focused = self.is_focused;
+    pub fn toggle_focus(&mut self) {
+        self.is_focused = !self.is_focused;
+        self.shared_state.is_overlay_focused = self.is_focused;
 
-    //     let input_stack_system = engine::get().input_stack_system();
-    //     if self.input_context.is_none() {
-    //         let ctx_ptr = input_stack_system.push_input_context();
-    //         self.input_context = Some(utils::SendableContext(ctx_ptr));
-    //     }
+        let input_stack_system = self.engine_instance.input_stack_system();
+        if self.input_context.is_none() {
+            let ctx_ptr = input_stack_system.push_input_context();
+            self.input_context = Some(SendableContext(ctx_ptr));
+        }
 
-    //     let ctx = self.input_context.as_ref().unwrap().0;
+        let ctx = self.input_context.as_ref().unwrap().0;
 
-    //     if self.is_focused {
-    //         input_stack_system.enable_input_context(ctx, true);
-    //         input_stack_system.set_cursor_visible(ctx, false);
-    //         input_stack_system.set_mouse_capture(ctx, true);
-    //         self.shared_state.open_counter += 1;
-    //     } else {
-    //         // TODO: Center the cursor
-    //         // unsafe {
-    //         //     let x = windows::Win32::UI::WindowsAndMessaging::SetCursorPos(960, 540);
-    //         //     eprintln!("{:?}", x);
-    //         // };
-    //         input_stack_system.enable_input_context(ctx, false);
-    //     }
-    // }
+        if self.is_focused {
+            input_stack_system.enable_input_context(ctx, true);
+            input_stack_system.set_cursor_visible(ctx, false);
+            input_stack_system.set_mouse_capture(ctx, true);
+        } else {
+            // TODO: Center the cursor
+            input_stack_system.enable_input_context(ctx, false);
+        }
+    }
 }
 
 // SAFETY: Used within `UiManager`, which is protected by a Mutex and lazily initialized.
@@ -152,8 +148,8 @@ fn initialize_systems() {
 
 
 fn initialize_render(hwnd: HWND, device: &windows::Win32::Graphics::Direct3D9::IDirect3DDevice9) {
-    // renderer::initialize(hwnd, device); // todo
-    log::info!("[INIT] Renderer initialized successfully.");
+    renderer::initialize(hwnd, device); // todo
+    log::info!("Renderer initialized successfully.");
 }
 
 #[unsafe(no_mangle)]
