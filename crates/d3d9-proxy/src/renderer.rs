@@ -102,7 +102,6 @@ pub fn handle_device_reset() {
 }
 
 fn _render_ui(ctx: &egui::Context) {
-    log::info!("RENDERING!!");
     if let Some(app) = super::OVERLAY_APP.get() {
         if let Ok(mut app_mutex) = app.lock() {
             app_mutex.draw_ui(ctx);

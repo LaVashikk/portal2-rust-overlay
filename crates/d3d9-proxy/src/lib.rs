@@ -6,7 +6,7 @@ use engine_api::Engine;
 use windows::Win32::Foundation::{BOOL, HMODULE, HWND, LPARAM, WPARAM};
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
 use windows::Win32::UI::Input::KeyboardAndMouse::VK_F3;
-use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN};
+use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR, WM_INPUT, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN};
 
 mod proxy;
 mod hooks;
@@ -45,7 +45,6 @@ impl UiManager {
     pub(crate) fn draw_ui(&mut self, ctx: &egui::Context) {
         for window in self.windows.iter_mut() {
             if window.is_open() {
-                // eprintln!("-- draw window: {:?}", window);
                 window.draw(ctx, &mut self.shared_state, &self.engine_instance);
             }
         }
@@ -73,7 +72,7 @@ impl UiManager {
             match umsg {
                 // "Eat" these messages so that the game doesn't receive them
                 WM_MOUSEMOVE | WM_LBUTTONDOWN | WM_LBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP
-                | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MOUSEWHEEL => {
+                | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MOUSEWHEEL | WM_INPUT => {
                     return false;
                 }
                 _ => {}
@@ -101,7 +100,6 @@ impl UiManager {
             input_stack_system.set_cursor_visible(ctx, false);
             input_stack_system.set_mouse_capture(ctx, true);
         } else {
-            // TODO: Center the cursor
             input_stack_system.enable_input_context(ctx, false);
         }
     }
@@ -114,11 +112,11 @@ impl UiManager {
 //          This approach is preferred because it provides synchronization, even if it introduces some overhead.
 pub struct SendableContext(pub *mut engine_api::input_system::InputContextT);
 unsafe impl Send for SendableContext {}
-unsafe impl Sync for SendableContext {}
 
+// --- INIT ---
 
 fn initialize_systems() {
-    //
+    // Initialize engine bindings
     let engine = match engine_api::Engine::initialize() {
         Ok(instance) => instance,
         Err(err) => {
@@ -135,7 +133,7 @@ fn initialize_systems() {
         },
     };
 
-    // TODO
+    // Initialize the UI application state
     if OVERLAY_APP.set(Mutex::new(
         UiManager::new(engine)
     )).is_err() {
@@ -144,7 +142,6 @@ fn initialize_systems() {
 
     log::info!("Overlay mod initialized successfully.");
 }
-
 
 fn initialize_render(hwnd: HWND, device: &windows::Win32::Graphics::Direct3D9::IDirect3DDevice9) {
     renderer::initialize(hwnd, device);

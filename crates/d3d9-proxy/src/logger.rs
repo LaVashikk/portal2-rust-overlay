@@ -38,6 +38,6 @@ pub fn init() {
     };
 
     if result.is_err() {
-        eprintln!("[LOGGER ERROR] Failed to initialize logger!");
+        log::error!("Failed to initialize logger!");
     }
 }
