@@ -40,17 +40,23 @@ impl Window for FogWindow {
             return
         }
 
+        let client = engine.client();
+        let cvar_system = engine.cvar_system();
+
+        let is_cheats_enabled = cvar_system.find_var("sv_cheats").unwrap().get_int() > 0;
+        let color = if is_cheats_enabled {
+            egui::Color32::GRAY
+        } else {
+            egui::Color32::ORANGE
+        };
+
         egui::Window::new(self.name())
             .open(&mut self.is_open)
             .resizable(true)
             .default_width(320.0)
-            .show(ctx, |ui| {
-                // Access the engine systems once per frame
-                let client = engine.client();
-                let cvar_system = engine.cvar_system();
-
+            .show(ctx, |ui| { ui.add_enabled_ui(is_cheats_enabled, |ui| {
                 // --- Main Switches ---
-                ui.label("Requires sv_cheats 1");
+                ui.label( RichText::new("Requires sv_cheats 1").color(color) );
                 draw_cvar_checkbox(engine, ui, FOG_OVERRIDE, "Fog Override");
                 ui.separator();
 
@@ -80,10 +86,11 @@ impl Window for FogWindow {
 
                     if farz_override {
                         if ui.add(Slider::new(&mut farz_val, 0.0..=16000.0).text("FarZ")).changed() {
-                             client.execute_client_cmd_unrestricted(&format!("{} {}", R_FARZ, farz_val));
+                            client.execute_client_cmd_unrestricted(&format!("{} {}", R_FARZ, farz_val));
                         }
                     }
                 }
+            });
             });
     }
 }

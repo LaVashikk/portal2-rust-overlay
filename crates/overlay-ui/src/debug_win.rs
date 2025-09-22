@@ -16,8 +16,11 @@ impl Window for DebugWindow {
         }
 
         egui::Window::new(self.name())
-            .open(&mut self.is_open)
+            .collapsible(false)
             .resizable(true)
+            .hscroll(true)
+            .vscroll(true)
+            .default_height(38.)
             .show(ctx, |ui| {
                 ui.heading("CVar Inspector");
                 ui.separator();
