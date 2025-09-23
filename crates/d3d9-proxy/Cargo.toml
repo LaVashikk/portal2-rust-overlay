@@ -1,0 +1,23 @@
+[package]
+name = "d3d9-proxy"
+publish.workspace = true
+edition.workspace = true
+version.workspace = true
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+egui.workspace = true
+egui-d3d9.workspace = true
+windows.workspace = true
+engine-api.workspace = true
+overlay-ui.workspace = true
+
+log = "0.4.22"
+simplelog = "0.12.2"
+
+# [package.metadata.docs.rs]
+# default-target = "i686-pc-windows-gnu"

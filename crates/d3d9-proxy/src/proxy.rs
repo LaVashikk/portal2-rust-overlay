@@ -58,7 +58,7 @@ pub static D3D9_PROXY: LazyLock<D3d9Functions> = LazyLock::new(|| {
                 "Cannot find function {:?} in original d3d9.dll\0",
                 String::from_utf8_lossy(name)
             );
-            // let error_msg = std::ffi::CString::new(error_message).unwrap(); // todo
+            log::error!("{}", error_message);
             unsafe {
                 MessageBoxA(
                     None,
@@ -80,18 +80,18 @@ pub fn initialize() {
 #[inline]
 pub unsafe fn get_original_function<T>(ordinal: usize) -> T {
     let func_ptr = D3D9_PROXY.functions[ordinal - 1].unwrap();
-    std::mem::transmute_copy(&func_ptr)
+    unsafe { std::mem::transmute_copy(&func_ptr) }
 }
 
 // ======================================================== \\
 #[macro_export]
 macro_rules! create_proxy_function {
     ($fn_name:ident, $ordinal:expr, ($($arg_name:ident: $arg_type:ty),*), $ret_type:ty) => {
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         pub unsafe extern "system" fn $fn_name($($arg_name: $arg_type),*) -> $ret_type {
             type FnType = unsafe extern "system" fn($($arg_type),*) -> $ret_type;
-            let original_fn: FnType = crate::proxy::get_original_function($ordinal);
-            original_fn($($arg_name),*)
+            let original_fn: FnType = unsafe { crate::proxy::get_original_function($ordinal) };
+            unsafe {original_fn($($arg_name),*)}
         }
     };
 }

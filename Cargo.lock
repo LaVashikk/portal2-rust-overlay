@@ -78,11 +78,13 @@ dependencies = [
 
 [[package]]
 name = "d3d9-proxy"
-version = "1.0.0"
+version = "0.1.0"
 dependencies = [
  "egui",
  "egui-d3d9",
+ "engine-api",
  "log",
+ "overlay-ui",
  "simplelog",
  "windows",
 ]
@@ -121,7 +123,7 @@ dependencies = [
 
 [[package]]
 name = "egui-d3d9"
-version = "0.3.9"
+version = "0.4.0"
 dependencies = [
  "clipboard",
  "egui",
@@ -134,6 +136,13 @@ name = "emath"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e4cadcff7a5353ba72b7fea76bf2122b5ebdbc68e8155aa56dfdea90083fe1b"
+
+[[package]]
+name = "engine-api"
+version = "0.1.0"
+dependencies = [
+ "windows",
+]
 
 [[package]]
 name = "epaint"
@@ -243,6 +252,15 @@ name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
+
+[[package]]
+name = "overlay-ui"
+version = "0.1.0"
+dependencies = [
+ "egui",
+ "engine-api",
+ "windows",
+]
 
 [[package]]
 name = "owned_ttf_parser"

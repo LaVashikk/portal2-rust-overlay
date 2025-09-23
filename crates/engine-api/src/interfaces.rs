@@ -1,11 +1,11 @@
 use std::ffi::{c_int, c_void};
 use windows::core::PCSTR;
 use windows::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress};
-use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR};
 
 /// A generic function pointer type for the `CreateInterface` export.
 type CreateInterfaceFn =
     unsafe extern "C" fn(p_name: PCSTR, p_return_code: *mut c_int) -> *mut c_void;
+
 
 /// Finds and returns a pointer to a game interface from a specified module.
 ///
@@ -31,7 +31,7 @@ type CreateInterfaceFn =
 ///    if the address is invalid or the function signature is incorrect.
 /// 3. It deals with null-terminated C-strings.
 /// The caller is responsible for ensuring that the returned pointer is valid before dereferencing it.
-pub(super) unsafe fn find_interface<T>(
+pub unsafe fn find_interface<T>(
     module_name: &'static [u8],
     interface_name: &'static [u8],
 ) -> *mut T {
@@ -41,41 +41,31 @@ pub(super) unsafe fn find_interface<T>(
 
     // Get a handle to the module (DLL) that is already loaded in the game's process.
     // This is safer than LoadLibrary as it doesn't increment the module's reference count.
-    let module_handle = match GetModuleHandleA(module_pcstr) {
+    let module_handle = match unsafe { GetModuleHandleA(module_pcstr) } {
         Ok(handle) if !handle.is_invalid() => handle,
         _ => {
             // This is a critical error. The module should already be loaded by the game.
-            let error_msg = format!("Failed to get module handle for: {}\0", String::from_utf8_lossy(module_name));
-            MessageBoxA(None, PCSTR(error_msg.as_ptr()), PCSTR(b"Interface Error\0".as_ptr()), MB_ICONERROR);
+            eprintln!("[MOD] Failed to get module handle for: {}\0", String::from_utf8_lossy(module_name));
             return std::ptr::null_mut();
         }
     };
 
     // Find the exported `CreateInterface` function within the module.
     let create_interface_addr =
-        match GetProcAddress(module_handle, PCSTR(b"CreateInterface\0".as_ptr())) {
+        match unsafe { GetProcAddress(module_handle, PCSTR(b"CreateInterface\0".as_ptr())) } {
             Some(addr) => addr,
             None => {
-                let error_msg = format!(
-                    "'CreateInterface' not found in: {}\0",
-                    String::from_utf8_lossy(module_name)
-                );
-                MessageBoxA(
-                    None,
-                    PCSTR(error_msg.as_ptr()),
-                    PCSTR(b"Interface Error\0".as_ptr()),
-                    MB_ICONERROR,
-                );
+                eprintln!("[MOD] 'CreateInterface' not found in: {}", String::from_utf8_lossy(module_name));
                 return std::ptr::null_mut();
             }
         };
 
     // Cast the function address to the correct function pointer type.
-    let create_interface: CreateInterfaceFn = std::mem::transmute(create_interface_addr);
+    let create_interface: CreateInterfaceFn = unsafe { std::mem::transmute::<_, CreateInterfaceFn>(create_interface_addr) };
 
     // Call `CreateInterface` to get a pointer to the requested interface.
     // The second argument (return code) is optional and can be null.
-    let interface_ptr = create_interface(interface_pcstr, std::ptr::null_mut());
+    let interface_ptr = unsafe { create_interface(interface_pcstr, std::ptr::null_mut()) };
 
     // Return the pointer, casting it to the generic type `T`.
     // The caller will then cast it to a specific interface struct like `IVEngineClient`.

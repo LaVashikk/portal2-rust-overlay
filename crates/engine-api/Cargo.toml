@@ -1,0 +1,8 @@
+[package]
+name = "engine-api"
+publish.workspace = true
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+windows.workspace = true
