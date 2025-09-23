@@ -15,13 +15,18 @@ pub trait Window: std::fmt::Debug { // todo debug
 
     /// Shows or hides the window.
     fn toggle(&mut self);
-    // fn enable(&mut self); // todo
 
     /// Returns whether the window is open.
     fn is_open(&self) -> bool;
 
     /// The drawing logic of the window.
     fn draw(&mut self, ctx: &egui::Context, shared_state: &mut SharedState, engine: &Engine);
+
+    /// Raw input signal processing, optional.
+    /// # Returns
+    /// * `true` - if the input should be passed to the game.
+    /// * `false` - if the input should be "eaten" (blocked).
+    fn on_raw_input(&mut self, _umsg: u32, _wparam: u16) -> bool { true }
 }
 
 
@@ -29,10 +34,10 @@ pub trait Window: std::fmt::Debug { // todo debug
 ///
 /// This function is the designated discovery point for UI components. The core
 /// application calls it to populate the `UiManager`'s window list.
-pub fn regist_windows() -> Vec<Box<dyn Window + Send + Sync>> {
+pub fn regist_windows() -> Vec<Box<dyn Window + Send>> {
     vec![
         Box::new(OverlayText::default()),
-        Box::new(debug_win::DebugWindow { is_open: true }),
+        Box::new(debug_win::DebugWindow::default()),
         Box::new(fogui::FogWindow::default()),
     ]
 }

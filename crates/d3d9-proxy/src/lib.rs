@@ -23,7 +23,7 @@ static OVERLAY_APP: OnceLock<Mutex<UiManager>> = OnceLock::new();
 /// Owns all windows, manages global UI state (e.g., input focus),
 /// and provides access to the game engine API.
 pub struct UiManager {
-    windows: Vec<Box<dyn overlay_ui::Window + Send + Sync>>,
+    windows: Vec<Box<dyn overlay_ui::Window + Send>>,
     engine_instance: Engine,
     input_context: Option<SendableContext>,
 
@@ -68,6 +68,13 @@ impl UiManager {
 
         // todo: if right mouse button is held down and focused - give mouse input
 
+        let mut should_pass_to_game = true;
+        for win in self.windows.iter_mut() {
+            if !win.on_raw_input(umsg, wparam.0 as u16) {
+                should_pass_to_game = false;
+            }
+        }
+
         if self.is_focused {
             match umsg {
                 // "Eat" these messages so that the game doesn't receive them
@@ -79,7 +86,7 @@ impl UiManager {
             }
         }
 
-        true
+        should_pass_to_game
     }
 
 
