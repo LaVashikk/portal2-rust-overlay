@@ -6,3 +6,4 @@ version.workspace = true
 
 [dependencies]
 windows.workspace = true
+bitflags = "2.5.0"

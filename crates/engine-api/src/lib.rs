@@ -7,11 +7,12 @@ mod interfaces;
 mod memory;
 
 mod client;
-mod convar;
+mod cvar;
 pub mod input_system;
 
-use crate::{convar::ICvar, input_system::IInputStackSystem};
+use crate::{cvar::ICvar, input_system::IInputStackSystem};
 pub use client::IVEngineClient;
+pub use cvar::CvarFlags;
 
 /// A struct that holds pointers to all the game engine interfaces we need.
 pub struct Engine {
