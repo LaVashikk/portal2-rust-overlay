@@ -109,23 +109,43 @@ impl Engine {
                 }
             };
         }
+        macro_rules! get_vfunc { // for unique cases
+            ($this:expr, $idx:expr) => {
+                unsafe {
+                    let vtable = *($this as *const *const usize);
+                    let func_ptr = vtable.add($idx).read();
+                    std::mem::transmute(func_ptr)
+                }
+            };
+        }
 
         use signatures::iv_engine_client::*;
         let client = IVEngineClient {
             this: client_this as *mut _,
-            server_cmd: find_fn!(engine_mem, engine_base, SERVER_CMD_PATTERN, SERVER_CMD_MASK, "ServerCmd"),
-            client_cmd: find_fn!(engine_mem, engine_base, CLIENT_CMD_PATTERN, CLIENT_CMD_MASK, "ClientCmd"),
-            get_player_info: find_fn!(engine_mem, engine_base, GET_PLAYER_INFO_PATTERN, GET_PLAYER_INFO_MASK, "GetPlayerInfo"),
-            get_last_time_stamp: find_fn!(engine_mem, engine_base, GET_LAST_TIME_STAMP_PATTERN, GET_LAST_TIME_STAMP_MASK, "GetLastTimeStamp"),
-            get_view_angles: find_fn!(engine_mem, engine_base, GET_VIEW_ANGLES_PATTERN, GET_VIEW_ANGLES_MASK, "GetViewAngles"),
-            set_view_angles: find_fn!(engine_mem, engine_base, SET_VIEW_ANGLES_PATTERN, SET_VIEW_ANGLES_MASK, "SetViewAngles"),
-            get_max_clients: find_fn!(engine_mem, engine_base, GET_MAX_CLIENTS_PATTERN, GET_MAX_CLIENTS_MASK, "GetMaxClients"),
-            is_in_game: find_fn!(engine_mem, engine_base, IS_IN_GAME_PATTERN, IS_IN_GAME_MASK, "IsInGame"),
-            is_connected: find_fn!(engine_mem, engine_base, IS_CONNECTED_PATTERN, IS_CONNECTED_MASK, "IsConnected"),
-            is_drawing_loading_image: find_fn!(engine_mem, engine_base, IS_DRAWING_LOADING_IMAGE_PATTERN, IS_DRAWING_LOADING_IMAGE_MASK, "IsDrawingLoadingImage"),
-            get_level_name: find_fn!(engine_mem, engine_base, GET_LEVEL_NAME_PATTERN, GET_LEVEL_NAME_MASK, "GetLevelName"),
-            execute_client_cmd_unrestricted: find_fn!(engine_mem, engine_base, EXECUTE_CLIENT_CMD_UNRESTRICTED_PATTERN, EXECUTE_CLIENT_CMD_UNRESTRICTED_MASK, "ExecuteClientCmdUnrestricted"),
-            is_singlplayer: find_fn!(engine_mem, engine_base, IS_SINGLPLAYER_PATTERN, IS_SINGLPLAYER_MASK, "IsSingleplayer"),
+            server_cmd:             find_fn!(engine_mem, engine_base, SERVER_CMD_PATTERN, SERVER_CMD_MASK, "ServerCmd"),
+            client_cmd:             find_fn!(engine_mem, engine_base, CLIENT_CMD_PATTERN, CLIENT_CMD_MASK, "ClientCmd"),
+            get_player_info:        find_fn!(engine_mem, engine_base, GET_PLAYER_INFO_PATTERN, GET_PLAYER_INFO_MASK, "GetPlayerInfo"),
+            get_last_time_stamp:    find_fn!(engine_mem, engine_base, GET_LAST_TIME_STAMP_PATTERN, GET_LAST_TIME_STAMP_MASK, "GetLastTimeStamp"),
+            get_view_angles:        find_fn!(engine_mem, engine_base, GET_VIEW_ANGLES_PATTERN, GET_VIEW_ANGLES_MASK, "GetViewAngles"),
+            set_view_angles:        find_fn!(engine_mem, engine_base, SET_VIEW_ANGLES_PATTERN, SET_VIEW_ANGLES_MASK, "SetViewAngles"),
+            is_in_game:             find_fn!(engine_mem, engine_base, IS_IN_GAME_PATTERN, IS_IN_GAME_MASK, "IsInGame"),
+            is_connected:           find_fn!(engine_mem, engine_base, IS_CONNECTED_PATTERN, IS_CONNECTED_MASK, "IsConnected"),
+            is_singlplayer:         find_fn!(engine_mem, engine_base, IS_SINGLPLAYER_PATTERN, IS_SINGLPLAYER_MASK, "IsSingleplayer"),
+            con_is_visible:         find_fn!(engine_mem, engine_base, CON_IS_VISIBLE_PATTERN, CON_IS_VISIBLE_MASK, "ConIsVisible"),
+            get_screen_size:        find_fn!(engine_mem, engine_base, GET_SCREEN_SIZE_PATTERN, GET_SCREEN_SIZE_MASK, "GetScreenSize"),
+            get_player_for_user_id: find_fn!(engine_mem, engine_base, GET_PLAYER_FOR_USER_ID_PATTERN, GET_PLAYER_FOR_USER_ID_MASK, "GetPlayerForUserId"),
+            get_local_player:       find_fn!(engine_mem, engine_base, GET_LOCAL_PLAYER_PATTERN, GET_LOCAL_PLAYER_MASK, "GetLocalPlayer"),
+            load_model:             find_fn!(engine_mem, engine_base, LOAD_MODEL_PATTERN, LOAD_MODEL_MASK, "LoadModel"),
+            key_lookup_binding:     find_fn!(engine_mem, engine_base, KEY_LOOKUP_BINDING_PATTERN, KEY_LOOKUP_BINDING_MASK, "KeyLookupBinding"),
+            execute_client_cmd_unrestricted:  find_fn!(engine_mem, engine_base, EXECUTE_CLIENT_CMD_UNRESTRICTED_PATTERN, EXECUTE_CLIENT_CMD_UNRESTRICTED_MASK, "ExecuteClientCmdUnrestricted"),
+
+
+            // Unique cases of too short functions. They cannot be found by signature, using vtable indexes
+            get_max_clients:            get_vfunc!(client_this, 20),
+            is_drawing_loading_image:   get_vfunc!(client_this, 27),
+            get_level_name:             get_vfunc!(client_this, 52),
+            get_level_name_short:       get_vfunc!(client_this, 53),
+            is_paused:                  get_vfunc!(client_this, 86),
         };
 
         use signatures::iinput_stack_system::*;
