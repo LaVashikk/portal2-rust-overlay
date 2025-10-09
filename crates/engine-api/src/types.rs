@@ -1,5 +1,8 @@
 use std::ffi::{c_char, c_int, CStr};
 
+const MAX_PLAYER_NAME_LENGTH: usize = 128;
+const SIGNED_GUID_LEN: usize = 32;
+
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
 pub struct Vector {
@@ -25,36 +28,35 @@ pub struct VMatrix {
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct PlayerInfo {
-    pub version: u64,
+    // SteamID64
     pub xuid: u64,
-    pub name: [c_char; 128], // MAX_PLAYER_NAME_LENGTH
+
+    // Player name
+    pub name: [c_char; MAX_PLAYER_NAME_LENGTH],
+
+    // Unique ID on the server (1, 2, 3, etc.)
     pub user_id: c_int,
-    pub guid: [c_char; 33],
+
+    // SteamID2 as a string ("STEAM_X:Y:Z")
+    pub guid: [c_char; SIGNED_GUID_LEN + 1], // +1 for null terminator
+
+    // Other fields, order may be important
     pub friends_id: u32,
-    pub friends_name: [c_char; 128],
-    pub fake_player: bool,
-    pub is_hltv: bool,
+    pub friends_name: [c_char; MAX_PLAYER_NAME_LENGTH],
+    pub fake_player: bool,   // Is this a bot?
+    pub is_hltv: bool,       // Is this an HLTV bot/proxy?
     pub custom_files: [u32; 4],
     pub files_downloaded: u8,
+
+    _padding: [u8; 2],
 }
 
 impl Default for PlayerInfo {
     fn default() -> Self {
-        Self {
-            version: 0,
-            xuid: 0,
-            name: [0; 128],
-            user_id: 0,
-            guid: [0; 33],
-            friends_id: 0,
-            friends_name: [0; 128],
-            fake_player: false,
-            is_hltv: false,
-            custom_files: [0; 4],
-            files_downloaded: 0,
-        }
+        unsafe { std::mem::zeroed() }
     }
 }
+
 impl PlayerInfo {
     /// Returns the player's name as a Rust String.
     pub fn name(&self) -> String {
@@ -65,7 +67,7 @@ impl PlayerInfo {
         }
     }
 
-    /// Returns the player's GUID as a Rust String.
+    /// Returns the GUID (SteamID2) as a Rust String.
     pub fn guid(&self) -> String {
         unsafe {
             CStr::from_ptr(self.guid.as_ptr())
@@ -75,7 +77,7 @@ impl PlayerInfo {
     }
 
     /// Returns the player's friend's name as a Rust String.
-    pub fn friends_name(&self) -> String {
+    pub fn friends_name(&self) -> String { // todo? what is this?
         unsafe {
             CStr::from_ptr(self.friends_name.as_ptr())
                 .to_string_lossy()
