@@ -131,7 +131,6 @@ impl Engine {
             is_in_game:             find_fn!(engine_mem, engine_base, IS_IN_GAME_PATTERN, IS_IN_GAME_MASK, "IsInGame"),
             is_connected:           find_fn!(engine_mem, engine_base, IS_CONNECTED_PATTERN, IS_CONNECTED_MASK, "IsConnected"),
             is_singlplayer:         find_fn!(engine_mem, engine_base, IS_SINGLPLAYER_PATTERN, IS_SINGLPLAYER_MASK, "IsSingleplayer"),
-            con_is_visible:         find_fn!(engine_mem, engine_base, CON_IS_VISIBLE_PATTERN, CON_IS_VISIBLE_MASK, "ConIsVisible"),
             get_screen_size:        find_fn!(engine_mem, engine_base, GET_SCREEN_SIZE_PATTERN, GET_SCREEN_SIZE_MASK, "GetScreenSize"),
             get_player_for_user_id: find_fn!(engine_mem, engine_base, GET_PLAYER_FOR_USER_ID_PATTERN, GET_PLAYER_FOR_USER_ID_MASK, "GetPlayerForUserId"),
             get_local_player:       find_fn!(engine_mem, engine_base, GET_LOCAL_PLAYER_PATTERN, GET_LOCAL_PLAYER_MASK, "GetLocalPlayer"),
@@ -141,6 +140,7 @@ impl Engine {
 
 
             // Unique cases of too short functions. They cannot be found by signature, using vtable indexes
+            con_is_visible:             get_vfunc!(client_this, 11),
             get_max_clients:            get_vfunc!(client_this, 20),
             is_drawing_loading_image:   get_vfunc!(client_this, 27),
             get_level_name:             get_vfunc!(client_this, 52),

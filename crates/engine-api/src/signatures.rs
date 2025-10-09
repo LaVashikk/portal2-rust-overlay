@@ -36,9 +36,6 @@ pub mod iv_engine_client {
     pub const GET_PLAYER_FOR_USER_ID_PATTERN: &[u8] = b"\x55\x8B\xEC\xE8\x38\x43\x02\x00\x83\xB8\x2C\x4F\x00\x00\x00\x75\x06\x33\xC0\x5D";
     pub const GET_PLAYER_FOR_USER_ID_MASK: &str = "xxxx????xx?????x?xxx";
 
-    pub const CON_IS_VISIBLE_PATTERN: &[u8] = b"\xE8\xBB\x7E\x15\x00\x8B\x10\x8B\xC8\x8B\x42\x48\xFF\xE0";
-    pub const CON_IS_VISIBLE_MASK: &str = "x????xxxxxx?xx";
-
     pub const GET_LOCAL_PLAYER_PATTERN: &[u8] = b"\x6A\xFF\xE8\x29\x4D\x02\x00\x8B\x80\xD8\x00\x00\x00\x83\xC4\x04\x40";
     pub const GET_LOCAL_PLAYER_MASK: &str = "x?x????xx????xx?x";
 
