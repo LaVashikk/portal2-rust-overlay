@@ -34,12 +34,9 @@ impl Window for FogWindow {
     fn name(&self) -> &'static str { "Better Fog GUI" }
     fn toggle(&mut self) { self.is_open = !self.is_open; }
     fn is_open(&self) -> bool { self.is_open }
+    fn is_should_render(&self, shared_state: &SharedState, _engine: &Engine) -> bool { shared_state.is_overlay_focused }
 
-    fn draw(&mut self, ctx: &egui::Context, shared_state: &mut SharedState, engine: &Engine) {
-        if !shared_state.is_overlay_focused {
-            return
-        }
-
+    fn draw(&mut self, ctx: &egui::Context, _shared_state: &mut SharedState, engine: &Engine) {
         let client = engine.client();
         let cvar_system = engine.cvar_system();
 

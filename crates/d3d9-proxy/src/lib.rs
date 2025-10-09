@@ -46,7 +46,7 @@ impl UiManager {
 
     pub(crate) fn draw_ui(&mut self, ctx: &egui::Context) {
         for window in self.windows.iter_mut() {
-            if window.is_open() {
+            if window.is_open() && window.is_should_render(&self.shared_state, &self.engine_instance) {
                 window.draw(ctx, &mut self.shared_state, &self.engine_instance);
             }
         }

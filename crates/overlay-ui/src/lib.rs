@@ -19,6 +19,10 @@ pub trait Window: std::fmt::Debug { // todo debug
     /// Returns whether the window is open.
     fn is_open(&self) -> bool;
 
+    /// Determines if the window should be rendered in the current frame.
+    /// This is checked before calling `draw()`.
+    fn is_should_render(&self, _shared_state: &SharedState, _engine: &Engine) -> bool { true }
+
     /// The drawing logic of the window.
     fn draw(&mut self, ctx: &egui::Context, shared_state: &mut SharedState, engine: &Engine);
 
@@ -55,12 +59,13 @@ impl Window for OverlayText {
     fn name(&self) -> &'static str { "Overlay Text" }
     fn toggle(&mut self) {}
     fn is_open(&self) -> bool { true }
+
     fn draw(&mut self, ctx: &Context, _shared_state: &mut SharedState, _engine: &Engine) {
         let screen_rect = ctx.screen_rect();
         ctx.debug_painter().text(
             egui::pos2(screen_rect.left() + 10.0, screen_rect.bottom() - 10.0),
             egui::Align2::LEFT_BOTTOM,
-            "UPDATED CUSTOM OVERLAY!",
+            "IN-Game Custom Overlay",
             egui::FontId::proportional(20.0),
             egui::Color32::ORANGE,
         );
