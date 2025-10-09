@@ -141,6 +141,7 @@ checksum = "9e4cadcff7a5353ba72b7fea76bf2122b5ebdbc68e8155aa56dfdea90083fe1b"
 name = "engine-api"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "windows",
 ]
 

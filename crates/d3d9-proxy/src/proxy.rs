@@ -25,6 +25,7 @@ pub static D3D9_PROXY: LazyLock<D3d9Functions> = LazyLock::new(|| {
     let lib_handle = match unsafe { LoadLibraryW(PCWSTR(wide_path.as_ptr())) } {
         Ok(h) => h,
         Err(_) => {
+            log::error!("Cannot load original d3d9.dll library");
             unsafe {
                 MessageBoxA(
                     None,
@@ -58,7 +59,7 @@ pub static D3D9_PROXY: LazyLock<D3d9Functions> = LazyLock::new(|| {
                 "Cannot find function {:?} in original d3d9.dll\0",
                 String::from_utf8_lossy(name)
             );
-            log::error!("{}", error_message);
+            log::error!("Proxy error! {}", error_message);
             unsafe {
                 MessageBoxA(
                     None,
