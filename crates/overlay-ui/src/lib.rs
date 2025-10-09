@@ -41,7 +41,7 @@ pub trait Window: std::fmt::Debug { // todo debug
 pub fn regist_windows() -> Vec<Box<dyn Window + Send>> {
     vec![
         Box::new(OverlayText::default()),
-        Box::new(debug_win::DebugWindow::default()),
+        Box::new(engine_api_demo::EngineApiDemoWindow::default()),
         Box::new(fogui::FogWindow::default()),
     ]
 }
@@ -50,7 +50,8 @@ pub fn regist_windows() -> Vec<Box<dyn Window + Send>> {
 // ---------------------- \\
 //      YOUR WINDOWS      \\
 // ---------------------- \\
-mod debug_win;
+// mod debug_win;
+mod engine_api_demo;
 mod fogui;
 
 #[derive(Debug, Default)]

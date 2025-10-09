@@ -8,3 +8,4 @@ version.workspace = true
 egui.workspace = true
 windows.workspace = true
 engine-api.workspace = true
+log = "0.4.22"
