@@ -6,6 +6,8 @@ use windows::Win32::Graphics::Direct3D9::IDirect3DDevice9;
 use windows::Win32::UI::WindowsAndMessaging::{
     CallWindowProcW, SetWindowLongPtrA, GWLP_WNDPROC, WNDPROC};
 
+use crate::TEXT_SCALE;
+
 static EGUI_RENDERER: OnceLock<Mutex<EguiDx9<()>>> = OnceLock::new();
 static mut O_WNDPROC: Option<WNDPROC> = None;
 
@@ -102,6 +104,17 @@ pub fn handle_device_reset() {
 }
 
 fn _render_ui(ctx: &egui::Context) {
+    let mut style = (*ctx.style()).clone();
+    style.text_styles = [
+        (egui::TextStyle::Heading, egui::FontId::new(18.0*TEXT_SCALE, egui::FontFamily::Proportional)),
+        (egui::TextStyle::Body, egui::FontId::new(12.5*TEXT_SCALE, egui::FontFamily::Proportional)),
+        (egui::TextStyle::Monospace, egui::FontId::new(12.0*TEXT_SCALE, egui::FontFamily::Proportional)),
+        (egui::TextStyle::Button, egui::FontId::new(12.5*TEXT_SCALE, egui::FontFamily::Proportional)),
+        (egui::TextStyle::Small, egui::FontId::new(9.0*TEXT_SCALE, egui::FontFamily::Proportional)),
+    ]
+    .into();
+    ctx.set_style(style);
+
     if let Some(app) = super::OVERLAY_APP.get() {
         if let Ok(mut app_mutex) = app.lock() {
             app_mutex.draw_ui(ctx);

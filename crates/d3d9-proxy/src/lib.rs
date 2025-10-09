@@ -6,12 +6,14 @@ use engine_api::Engine;
 use windows::Win32::Foundation::{BOOL, HMODULE, HWND, LPARAM, WPARAM};
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
 use windows::Win32::UI::Input::KeyboardAndMouse::VK_F3;
-use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR, WM_INPUT, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN};
+use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR, WM_INPUT, WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDBLCLK, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDBLCLK, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN, WM_XBUTTONDBLCLK};
 
 mod proxy;
 mod hooks;
 mod renderer;
 mod logger;
+
+const TEXT_SCALE: f32 = 1.4;
 
 // The global, thread-safe instance of the entire overlay application.
 // This serves as the foundation for the UI. To add new windows or views,
@@ -79,6 +81,7 @@ impl UiManager {
             match umsg {
                 // "Eat" these messages so that the game doesn't receive them
                 WM_MOUSEMOVE | WM_LBUTTONDOWN | WM_LBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP
+                | WM_LBUTTONDBLCLK | WM_RBUTTONDBLCLK | WM_MBUTTONDBLCLK | WM_XBUTTONDBLCLK
                 | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MOUSEWHEEL | WM_INPUT => {
                     return false;
                 }
