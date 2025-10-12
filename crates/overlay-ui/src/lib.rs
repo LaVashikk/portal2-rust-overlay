@@ -5,6 +5,7 @@ use engine_api::Engine;
 #[derive(Debug, Default, Clone)]
 pub struct SharedState {
     pub is_overlay_focused: bool,
+    pub surver_is_opened: bool,
 }
 
 /// Trait that every window must implement.
@@ -41,8 +42,10 @@ pub trait Window: std::fmt::Debug { // todo debug
 pub fn regist_windows() -> Vec<Box<dyn Window + Send>> {
     vec![
         Box::new(OverlayText::default()),
-        Box::new(engine_api_demo::EngineApiDemoWindow::default()),
-        Box::new(fogui::FogWindow::default()),
+        // Box::new(engine_api_demo::EngineApiDemoWindow::default()),
+        // Box::new(fogui::FogWindow::default()),
+        Box::new(survey::SurveyWin::new("SURVEY/default.json")),
+        Box::new(survey::BugReportWin::new("SURVEY/bug_report.json")),
     ]
 }
 
@@ -72,3 +75,5 @@ impl Window for OverlayText {
         );
     }
 }
+
+mod survey;

@@ -168,6 +168,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc7e7a64c02cf7a5b51e745a9e45f60660a286f151c238b9d397b3e923f5082f"
 
 [[package]]
+name = "itoa"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
+
+[[package]]
 name = "libc"
 version = "0.2.175"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -197,6 +203,12 @@ checksum = "62bb907fe88d54d8d9ce32a3cceab4218ed2f6b7d35617cafe9adf84e43919cb"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "memchr"
+version = "2.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
 name = "nohash-hasher"
@@ -260,6 +272,9 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "engine-api",
+ "log",
+ "serde",
+ "serde_json",
  "windows",
 ]
 
@@ -335,6 +350,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ryu"
+version = "1.0.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
+
+[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -358,6 +379,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.143"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d401abef1d108fbd9cbaebc3e46611f4b1021f714a0597a71f41ee463f5f4a5a"
+dependencies = [
+ "itoa",
+ "memchr",
+ "ryu",
+ "serde",
 ]
 
 [[package]]
