@@ -81,6 +81,6 @@ impl Window for SurveyWin {
         }
     }
 
-    fn toggle(&mut self) { //* Controlling via CVar */ }
-    fn is_open(&self) -> bool { true } 
+    fn toggle(&mut self) { /* Controlling via CVar */ }
+    fn is_open(&self) -> bool { true }
 }

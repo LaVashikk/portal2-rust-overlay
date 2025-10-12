@@ -220,6 +220,7 @@ impl WidgetForm {
                                 }
                             });
                         }
+                        _ => {}
                     }
                 });
             ui.separator();
