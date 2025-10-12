@@ -49,7 +49,7 @@ impl WidgetConfig {
 }
 
 #[derive(Deserialize, Debug, Default)]
-pub struct SurveyConfig {
+pub struct FormConfig {
     pub title: String,
     pub widgets: Vec<WidgetConfig>,
 }
@@ -74,7 +74,7 @@ impl WidgetState {
 }
 
 #[derive(Serialize, Debug)]
-pub struct SurveySubmission {
+pub struct FormSubmission {
     pub survey_id: String,
     pub user_name: String,
     pub user_xuid: String,

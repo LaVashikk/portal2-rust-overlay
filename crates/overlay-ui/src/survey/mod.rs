@@ -8,13 +8,25 @@ use crate::{SharedState, Window};
 mod types;
 use types::*;
 
+mod survey;
+mod bug_report;
+pub use survey::SurveyWin;
+pub use bug_report::BugReportWin;
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum FormAction {
+    Submitted,
+    Closed,
+    None,
+}
+
 #[derive(Debug, Default)]
-pub struct SurveyApp {
-    config: SurveyConfig,
+pub struct WidgetForm {
+    config: FormConfig,
     state: Vec<WidgetState>,
-    output_path: PathBuf,
+    output_path: PathBuf, // todo: remove it, make dyn
     pub opened: bool,
-    current_survey_path: String,
+    config_path: String,
 }
 
 fn show_error_and_panic(caption: &str, text: &str) -> ! { // utils
@@ -36,16 +48,16 @@ fn show_error_and_panic(caption: &str, text: &str) -> ! { // utils
     panic!("{}", text);
 }
 
-impl SurveyApp {
-    pub fn new(config: &str) -> Self {
+impl WidgetForm {
+    pub fn new(config_path: &str) -> Self {
         let mut app = Self::default();
-        app.load_survey(config);
+        app.load_form(config_path);
         app
     }
 
-    /// Loads and initializes a survey from a configuration file.
+    /// Loads and initializes a FORM from a configuration file.
     /// This method resets all previous states.
-    fn load_survey(&mut self, config_path_str: &str) {
+    fn load_form(&mut self, config_path_str: &str) {
         let config_path = PathBuf::from(config_path_str);
 
         // Read the configuration file into a string
@@ -61,8 +73,8 @@ impl SurveyApp {
             }
         };
 
-        // Parse the JSON string into the SurveyConfig struct
-        let config: SurveyConfig = match serde_json::from_str(&json_str) {
+        // Parse the JSON string into the FormConfig struct
+        let config: FormConfig = match serde_json::from_str(&json_str) {
             Ok(c) => c,
             Err(e) => {
                 let error_text = format!(
@@ -75,15 +87,7 @@ impl SurveyApp {
         };
 
         // Initialize the state based on the loaded config
-        let state = config
-            .widgets
-            .iter()
-            .map(|w_config| match w_config {
-                WidgetConfig::OneToTen(_) => WidgetState::OneToTen(None),
-                WidgetConfig::Essay(_) => WidgetState::Essay(String::new()),
-                WidgetConfig::RadioChoices(_) => WidgetState::RadioChoices(None),
-            })
-            .collect();
+        let state = Self::create_initial_state(&config.widgets);
 
         // Dynamically determine the path for saving results
         let mut output_path = config_path.clone();
@@ -98,7 +102,7 @@ impl SurveyApp {
         self.config = config;
         self.state = state;
         self.output_path = output_path;
-        self.current_survey_path = config_path_str.to_string();
+        self.config_path = config_path_str.to_string();
         self.opened = false; // Reset the flag so that the `if !self.opened` trigger works
     }
 
@@ -110,8 +114,20 @@ impl SurveyApp {
             .all(|(config, state)| !config.is_required() || state.is_answered())
     }
 
+    fn create_initial_state(widgets: &[WidgetConfig]) -> Vec<WidgetState> {
+        widgets.iter().map(|w_config| match w_config {
+            WidgetConfig::OneToTen(_) => WidgetState::OneToTen(None),
+            WidgetConfig::Essay(_) => WidgetState::Essay(String::new()),
+            WidgetConfig::RadioChoices(_) => WidgetState::RadioChoices(None),
+        }).collect()
+    }
+
+    pub fn reset_state(&mut self) {
+        self.state = Self::create_initial_state(&self.config.widgets);
+    }
+
     /// Collects all data and saves it to a structured JSON file.
-    fn save_answer(&self, engine: &Engine) -> Result<(), String> {
+    fn save_results(&self, engine: &Engine, _: &str) -> Result<(), String> {
         // 1. Collect metadata
         let client = engine.client();
         let local_player_idx = client.get_local_player();
@@ -120,7 +136,7 @@ impl SurveyApp {
             .map(|info| (info.name().to_string(), info.xuid.to_string()))
             .unwrap_or_else(|| ("<unknown>".to_string(), "0".to_string()));
 
-        let survey_id = self.current_survey_path.clone();
+        let survey_id = self.config_path.clone();
 
         // 2. Format answers as "question: answer"
         let mut answers = HashMap::new();
@@ -129,7 +145,7 @@ impl SurveyApp {
         }
 
         // 3. Create the final structure
-        let submission = SurveySubmission {
+        let submission = FormSubmission {
             survey_id,
             user_name,
             user_xuid,
@@ -143,18 +159,6 @@ impl SurveyApp {
         fs::write(&self.output_path, json_data).map_err(|e| e.to_string())?;
 
         Ok(())
-    }
-
-    fn reset_state(&mut self) {
-        self.state = self.config
-            .widgets
-            .iter()
-            .map(|w_config| match w_config {
-                WidgetConfig::OneToTen(_) => WidgetState::OneToTen(None),
-                WidgetConfig::Essay(_) => WidgetState::Essay(String::new()),
-                WidgetConfig::RadioChoices(_) => WidgetState::RadioChoices(None),
-            })
-            .collect();
     }
 
     fn render_widgets(&mut self, ui: &mut egui::Ui) {
@@ -216,69 +220,47 @@ impl SurveyApp {
                                 }
                             });
                         }
-                        _ => {
-                            unreachable!("Типы виджета в конфиге и состоянии не совпадают.");
-                        }
                     }
                 });
             ui.separator();
         }
     }
-}
 
-impl Window for SurveyApp {
-    fn is_should_render(&self, _shared_state: &SharedState, engine: &engine_api::Engine) -> bool {
-        let cvar_system = engine.cvar_system();
-        match cvar_system.find_var("open_survey") { // STUPID LMAO AHAHAHAH
-            Some(val) => !val.get_string().chars().all(|c| c.is_ascii_digit()) || val.get_int() != 0,
-            None => {
-                engine.client().client_cmd("setinfo open_survey 0");
-                false
-            }
-        }
-    }
-
-    fn draw(
+    pub fn draw_modal_window(
         &mut self,
         ctx: &egui::Context,
-        shared_state: &mut SharedState,
-        engine: &engine_api::Engine,
-    ) {
-        // This block triggers after `load_survey` or on the first opening
-        if !self.opened {
-            let target_survey_path = engine.cvar_system().find_var("open_survey")
-                .map(|cvar| cvar.get_string())
-                .unwrap_or_default();
-
-            // If a new survey is requested, load it
-            if !target_survey_path.chars().all(|c| c.is_ascii_digit()) && self.current_survey_path != target_survey_path {
-                self.load_survey(&target_survey_path);
-            }
-
-            let client = engine.client();
-            if !client.is_paused() && client.is_in_game() { client.client_cmd("pause"); }
-            self.opened = true;
-            shared_state.is_overlay_focused = true; // todo! debug shit, needed better interface?
-        }
-
-        let modal_id = egui::Id::new("survey_modal_id");
+        _engine: &Engine, // todo?
+        is_closable: bool,
+    ) -> FormAction {
+        let modal_id = egui::Id::new("widget_form_modal");
         let area = egui::Modal::default_area(modal_id)
             .default_size(ctx.screen_rect().size() * 0.6);
-
         let modal = egui::Modal::new(modal_id)
             .frame(egui::Frame::NONE)
             .area(area);
 
+        let mut action = FormAction::None;
+
         modal.show(ctx, |ui| {
             egui::Frame::window(ui.style()).show(ui, |ui| {
-                let min_scroll = ctx.screen_rect().size().y * 0.7;
                 ui.set_width(ui.available_width());
-                ui.vertical_centered(|ui| {
-                    ui.heading(&self.config.title);
+                ui.horizontal(|ui| {
+                    if is_closable {
+                        // ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("❌").on_hover_text("Close").clicked() {
+                            action = FormAction::Closed;
+                        }
+                    }
+                    ui.centered_and_justified(|ui| {
+                        ui.heading(&self.config.title);
+                    });
+
                 });
+
                 ui.add_space(10.0);
                 ui.separator();
 
+                let min_scroll = ctx.screen_rect().size().y * 0.7;
                 egui::ScrollArea::vertical().min_scrolled_height(min_scroll).show(ui, |ui| {
                     self.render_widgets(ui);
                     ui.add_space(20.0);
@@ -286,48 +268,15 @@ impl Window for SurveyApp {
                     ui.vertical_centered(|ui| {
                         let all_required_filled = self.are_all_required_filled();
                         let submit_button = egui::Button::new("Submit").min_size(egui::vec2(120.0, 30.0));
-
                         if ui.add_enabled(all_required_filled, submit_button).clicked() {
-                            match self.save_answer(engine) {
-                                Ok(_) => { // stupid toggle todo dev shit frfr
-                                    let client = engine.client();
-                                    client.client_cmd("open_survey 0");
-                                    if client.is_in_game() { client.client_cmd("unpause"); }
-                                    self.opened = false;
-                                    shared_state.is_overlay_focused = false;
-                                    self.reset_state();
-                                }
-                                Err(e) => {
-                                    log::error!("Failed to save survey: {}", e);
-                                    // TODO: Show a modal window with the error
-                                }
-                            }
+                            action = FormAction::Submitted;
                         }
                     });
+
                 });
             });
         });
-    }
 
-    fn on_raw_input(&mut self, umsg: u32, _wparam: u16) -> bool {
-        use windows::Win32::UI::WindowsAndMessaging::{WM_CHAR, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP};
-
-        if !self.opened { return true; }
-        match umsg {
-            WM_KEYDOWN | WM_KEYUP | WM_SYSKEYDOWN | WM_SYSKEYUP | WM_CHAR => false,
-            _ => true
-        }
-    }
-
-    fn name(&self) -> &'static str {
-        "Survey"
-    }
-
-    fn toggle(&mut self) {
-        // Opening/closing is now controlled via the "open_survey" CVar
-    }
-
-    fn is_open(&self) -> bool {
-        true
+        action
     }
 }
