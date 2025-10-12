@@ -19,6 +19,16 @@ impl BugReportWin {
         }
     }
 
+    fn save_form_results(&self, engine: &Engine) -> Result<(), String> {
+        let mut extra_data = std::collections::BTreeMap::new();  // TODO: just for testing purposes
+        let mut current_angles = engine_api::types::QAngle::default();
+        engine.client().get_view_angles(&mut current_angles);
+        extra_data.insert("player_pos".to_string(), serde_json::json!(format!("Vector({}, {}, {})", current_angles.x, current_angles.y, current_angles.z)));
+        extra_data.insert("test".to_string(), serde_json::json!("passed!"));
+
+        self.form.save_results(engine, Some(extra_data))
+    }
+
     fn close_window(&mut self, shared_state: &mut SharedState) {
         self.is_modal_open = false;
         shared_state.is_overlay_focused = false;
@@ -95,7 +105,7 @@ impl Window for BugReportWin {
             match action {
                 FormAction::Submitted => {
                     // The Submit button was clicked
-                    if let Err(e) = self.form.save_results(engine, "bug_report") {
+                    if let Err(e) = self.save_form_results(engine) {
                         log::error!("Failed to save bug report: {}", e);
                     }
 

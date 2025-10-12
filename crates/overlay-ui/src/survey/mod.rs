@@ -1,9 +1,10 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 use std::fs;
 use std::path::PathBuf;
 
 use engine_api::Engine;
-use crate::{SharedState, Window};
 
 mod types;
 use types::*;
@@ -24,7 +25,6 @@ pub enum FormAction {
 pub struct WidgetForm {
     config: FormConfig,
     state: Vec<WidgetState>,
-    output_path: PathBuf, // todo: remove it, make dyn
     pub opened: bool,
     config_path: String,
 }
@@ -89,19 +89,9 @@ impl WidgetForm {
         // Initialize the state based on the loaded config
         let state = Self::create_initial_state(&config.widgets);
 
-        // Dynamically determine the path for saving results
-        let mut output_path = config_path.clone();
-        let stem = output_path
-            .file_stem()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default();
-        output_path.set_file_name(format!("{}_result.json", stem));
-
         // Update the object's state
         self.config = config;
         self.state = state;
-        self.output_path = output_path;
         self.config_path = config_path_str.to_string();
         self.opened = false; // Reset the flag so that the `if !self.opened` trigger works
     }
@@ -127,36 +117,65 @@ impl WidgetForm {
     }
 
     /// Collects all data and saves it to a structured JSON file.
-    fn save_results(&self, engine: &Engine, _: &str) -> Result<(), String> {
-        // 1. Collect metadata
+    /// The provided `base_data` HashMap is used as a base, and common information
+    /// (user, answers, etc.) is added to it before serialization.
+    pub fn save_results(
+        &self,
+        engine: &Engine,
+        extra_data: Option<BTreeMap<String, serde_json::Value>>,
+    ) -> Result<(), String> {
+        // Collect common metadata
         let client = engine.client();
         let local_player_idx = client.get_local_player();
         let (user_name, user_xuid) = client
             .get_player_info(local_player_idx)
             .map(|info| (info.name().to_string(), info.xuid.to_string()))
             .unwrap_or_else(|| ("<unknown>".to_string(), "0".to_string()));
+        let submission_timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| e.to_string())?
+            .as_secs();
 
-        let survey_id = self.config_path.clone();
-
-        // 2. Format answers as "question: answer"
-        let mut answers = HashMap::new();
+        // Format answers as "question: answer"
+        let mut answers = BTreeMap::new();
         for (config, state) in self.config.widgets.iter().zip(self.state.iter()) {
-            answers.insert(config.text().to_string(), state.clone());
+            answers.insert(config.text().to_string(), state.to_string());
         }
 
-        // 3. Create the final structure
+        // Create the final structure
         let submission = FormSubmission {
-            survey_id,
+            survey_id: self.config_path.clone(),
             user_name,
             user_xuid,
             map_name: client.get_level_name().to_string(),
-            timestamp: client.get_last_time_stamp(),
+            game_timestamp: client.get_last_time_stamp(),
+            submission_timestamp,
             answers,
+            extra_data: extra_data.unwrap_or_default(),
         };
 
-        // 4. Serialize and save
+        // Generate dynamic filename and path
+        let config_stem = PathBuf::from(&self.config_path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown_config")
+            .to_string();
+
+        let map_name = client.get_level_name_short()
+            .replace(|c: char| !c.is_alphanumeric() && c != '_', ""); // Sanitize map name
+
+        let filename = format!(
+            "{}_{}_{}.json",
+            config_stem, map_name, submission_timestamp
+        );
+
+        let output_dir = PathBuf::from("SURVEY/answers");
+        fs::create_dir_all(&output_dir).map_err(|e| format!("Failed to create output directory: {}", e))?;
+        let output_path = output_dir.join(filename);
+
+        // Serialize the final combined map and save
         let json_data = serde_json::to_string_pretty(&submission).map_err(|e| e.to_string())?;
-        fs::write(&self.output_path, json_data).map_err(|e| e.to_string())?;
+        fs::write(output_path, json_data).map_err(|e| e.to_string())?;
 
         Ok(())
     }

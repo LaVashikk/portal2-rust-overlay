@@ -54,8 +54,7 @@ pub struct FormConfig {
     pub widgets: Vec<WidgetConfig>,
 }
 
-#[derive(Serialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(Debug, Clone)]
 pub enum WidgetState {
     OneToTen(Option<u8>),
     Essay(String),
@@ -72,13 +71,28 @@ impl WidgetState {
         }
     }
 }
+impl std::fmt::Display for WidgetState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WidgetState::OneToTen(Some(val)) => write!(f, "{}", val),
+            WidgetState::RadioChoices(Some(choice)) => write!(f, "{}", choice),
+            WidgetState::Essay(text) => write!(f, "{}", text),
+            WidgetState::OneToTen(None) | WidgetState::RadioChoices(None) => write!(f, ""),
+        }
+    }
+}
 
-#[derive(Serialize, Debug)]
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FormSubmission {
     pub survey_id: String,
     pub user_name: String,
     pub user_xuid: String,
     pub map_name: String,
-    pub timestamp: f32,
-    pub answers: std::collections::HashMap<String, WidgetState>,
+    pub game_timestamp: f32,
+    pub submission_timestamp: u64,
+    pub answers: std::collections::BTreeMap<String, String>,
+
+    #[serde(flatten)]
+    pub extra_data: std::collections::BTreeMap<String, serde_json::Value>,
 }

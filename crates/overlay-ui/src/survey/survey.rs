@@ -53,7 +53,7 @@ impl Window for SurveyWin {
         }
 
         if self.form.draw_modal_window(ctx, engine, false) == FormAction::Submitted {
-            match self.form.save_results(engine, "survey") {
+            match self.form.save_results(engine, None) {
                 Ok(_) => {
                     let client = engine.client();
                     client.client_cmd("open_survey 0");
