@@ -6,7 +6,7 @@ use engine_api::Engine;
 use windows::Win32::Foundation::{BOOL, HMODULE, HWND, LPARAM, WPARAM};
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
 use windows::Win32::UI::Input::KeyboardAndMouse::VK_F3;
-use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR, WM_INPUT, WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDBLCLK, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDBLCLK, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN, WM_XBUTTONDBLCLK};
+use windows::Win32::UI::WindowsAndMessaging::{MessageBoxA, MB_ICONERROR, WM_CHAR, WM_INPUT, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDBLCLK, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDBLCLK, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_XBUTTONDBLCLK};
 
 mod proxy;
 mod hooks;
@@ -28,6 +28,8 @@ pub struct UiManager {
     windows: Vec<Box<dyn overlay_ui::Window + Send>>,
     engine_instance: Engine,
     input_context: Option<SendableContext>,
+    egui_wants_keyboard: bool,
+    egui_wants_pointer: bool,
 
     pub shared_state: overlay_ui::SharedState,
     pub is_focused: bool,
@@ -40,7 +42,9 @@ impl UiManager {
             shared_state: overlay_ui::SharedState::default(),
             engine_instance,
             is_focused: false,
-            input_context: None
+            input_context: None,
+            egui_wants_keyboard: false,
+            egui_wants_pointer: false,
         }
     }
 
@@ -50,6 +54,9 @@ impl UiManager {
                 window.draw(ctx, &mut self.shared_state, &self.engine_instance);
             }
         }
+
+        self.egui_wants_keyboard = ctx.wants_keyboard_input();
+        self.egui_wants_pointer = ctx.wants_pointer_input();
     }
 
     /// # Arguments
@@ -70,6 +77,7 @@ impl UiManager {
 
         // todo: if right mouse button is held down and focused - give mouse input
 
+        // Pass the input to our own UI windows first.
         let mut should_pass_to_game = true;
         for win in self.windows.iter_mut() {
             if !win.on_raw_input(umsg, wparam.0 as u16) {
@@ -77,21 +85,31 @@ impl UiManager {
             }
         }
 
-        if self.is_focused {
-            match umsg {
-                // "Eat" these messages so that the game doesn't receive them
-                WM_MOUSEMOVE | WM_LBUTTONDOWN | WM_LBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP
-                | WM_LBUTTONDBLCLK | WM_RBUTTONDBLCLK | WM_MBUTTONDBLCLK | WM_XBUTTONDBLCLK
-                | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MOUSEWHEEL | WM_INPUT => {
-                    return false;
-                }
-                _ => {}
-            }
+        if !should_pass_to_game {
+            return false;
         }
 
-        should_pass_to_game
-    }
+        // Check if the message is a keyboard input event.
+        let is_keyboard_msg = matches!(umsg, WM_KEYUP | WM_KEYDOWN | WM_SYSKEYDOWN | WM_SYSKEYUP | WM_CHAR);
+        if is_keyboard_msg && ((self.egui_wants_keyboard && self.egui_wants_pointer) || self.is_focused) {
+            return false; // Input consumed by the UI, don't pass to game.
+        }
 
+        // Check if the message is a mouse input event.
+        let is_mouse_msg = matches!(
+            umsg,
+            WM_MOUSEMOVE | WM_LBUTTONDOWN | WM_LBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP
+            | WM_LBUTTONDBLCLK | WM_RBUTTONDBLCLK | WM_MBUTTONDBLCLK | WM_XBUTTONDBLCLK
+            | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MOUSEWHEEL | WM_INPUT
+        );
+        if is_mouse_msg && (self.egui_wants_pointer || self.is_focused) {
+            return false; // Input consumed by the UI, don't pass to game.
+        }
+
+        // If we've reached this point, the input was not consumed by the UI
+        // and should be passed on to the game.
+        true
+    }
 
     pub fn toggle_focus(&mut self) {
         self.is_focused = !self.is_focused;
