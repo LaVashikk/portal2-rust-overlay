@@ -4,7 +4,7 @@ use std::sync::{Mutex, Once, OnceLock};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Direct3D9::IDirect3DDevice9;
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallWindowProcW, SetWindowLongPtrA, GWLP_WNDPROC, WNDPROC};
+    CallWindowProcW, SetWindowLongPtrA, SetWindowLongPtrW, GWLP_WNDPROC, WNDPROC};
 
 use crate::TEXT_SCALE;
 
@@ -73,7 +73,7 @@ pub fn initialize(hwnd: HWND, device: &IDirect3DDevice9) {
 
         // Installing WndProc hook
         unsafe {
-            O_WNDPROC = Some(transmute(SetWindowLongPtrA(
+            O_WNDPROC = Some(transmute(SetWindowLongPtrW(
                 hwnd,
                 GWLP_WNDPROC,
                 hooked_wndproc as usize as _,
