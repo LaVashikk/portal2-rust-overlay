@@ -91,9 +91,13 @@ impl IVEngineClient {
         unsafe { (self.get_last_time_stamp)(self.this) }
     }
 
-    /// Gets the player's current view angles.
-    pub fn get_view_angles(&self, angles: &mut QAngle) {
-        unsafe { (self.get_view_angles)(self.this, angles) };
+    /// Returns the player's current view angles.
+    pub fn get_view_angles(&self) -> QAngle {
+        let mut angles = QAngle::default();
+        // SAFETY: `this` is a valid pointer. The engine function will write
+        // the current view angles into the `angles` struct we provide.
+        unsafe { (self.get_view_angles)(self.this, &mut angles) };
+        angles
     }
 
     /// Sets the player's view angles.

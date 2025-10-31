@@ -100,8 +100,7 @@ impl Window for EngineApiDemoWindow {
                 });
                 // === Section: View Angles ===
                 CollapsingHeader::new("View Angles").default_open(false).show(ui, |ui| {
-                    let mut current_angles = QAngle::default();
-                    client.get_view_angles(&mut current_angles);
+                    let current_angles = client.get_view_angles();
                     ui.label(format!("Current: P={:.2}, Y={:.2}, R={:.2}", current_angles.x, current_angles.y, current_angles.z));
                     ui.horizontal(|ui| {
                         ui.label("New Angles:");

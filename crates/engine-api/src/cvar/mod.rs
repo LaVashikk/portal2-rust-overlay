@@ -26,8 +26,8 @@ pub struct ConCommandBase {
     next: *mut ConCommandBase,
     is_registered: bool,
     _pad0: [u8; 3],
-    name: *const c_char,
-    help_string: *const c_char,
+    pub name: *const c_char,
+    pub help_string: *const c_char,
     flags: c_int,
 }
 
