@@ -13,7 +13,7 @@ mod hooks;
 mod renderer;
 mod logger;
 
-const TEXT_SCALE: f32 = 1.4;
+const TEXT_SCALE: f32 = 1.25; // todo maybe move to overlay-ui or global config?
 
 // The global, thread-safe instance of the entire overlay application.
 // This serves as the foundation for the UI. To add new windows or views,
@@ -28,6 +28,7 @@ pub struct UiManager {
     windows: Vec<Box<dyn overlay_ui::Window + Send>>,
     engine_instance: Engine,
     input_context: Option<SendableContext>,
+    cursor_visible_in_engine: bool,
     egui_wants_keyboard: bool,
     egui_wants_pointer: bool,
 
@@ -42,6 +43,7 @@ impl UiManager {
             shared_state: overlay_ui::SharedState::default(),
             engine_instance,
             is_focused: false,
+            cursor_visible_in_engine: true,
             input_context: None,
             egui_wants_keyboard: false,
             egui_wants_pointer: false,
@@ -70,12 +72,37 @@ impl UiManager {
     pub fn on_input(&mut self, umsg: u32, wparam: WPARAM, _lparam: LPARAM) -> bool {
         if umsg == WM_KEYUP || umsg == WM_SYSKEYDOWN {
             if wparam.0 as u16 == VK_F3.0 {
-                self.toggle_focus();
-                return false;
+                self.is_focused = !self.is_focused;
+                self.shared_state.is_overlay_focused = self.is_focused;
             }
         }
 
         // todo: if right mouse button is held down and focused - give mouse input
+
+        // Determines if the UI should take control of the cursor and synchronizes this state with the game engine.
+        // The cursor is demanded if the user has manually toggled focus (`is_focused`) OR if egui
+        // automatically requires it (e.g., hovering over a window). To avoid expensive, redundant
+        // calls to the engine on every input event, the state is only changed if the demand
+        // differs from the last known state (`cursor_visible_in_engine`).
+        let ui_demands_cursor = self.is_focused || self.egui_wants_pointer;
+        if ui_demands_cursor != self.cursor_visible_in_engine {
+            let input_stack_system = self.engine_instance.input_stack_system();
+
+            if self.input_context.is_none() {
+                let ctx_ptr = input_stack_system.push_input_context();
+                self.input_context = Some(SendableContext(ctx_ptr));
+            }
+            let ctx = self.input_context.as_ref().unwrap().0;
+
+            if ui_demands_cursor {
+                input_stack_system.enable_input_context(ctx, true);
+                input_stack_system.set_cursor_visible(ctx, false);
+                input_stack_system.set_mouse_capture(ctx, true);
+            } else {
+                input_stack_system.enable_input_context(ctx, false);
+            }
+            self.cursor_visible_in_engine = ui_demands_cursor;
+        }
 
         // Pass the input to our own UI windows first.
         let mut should_pass_to_game = true;
@@ -89,12 +116,6 @@ impl UiManager {
             return false;
         }
 
-        // Check if the message is a keyboard input event.
-        let is_keyboard_msg = matches!(umsg, WM_KEYUP | WM_KEYDOWN | WM_SYSKEYDOWN | WM_SYSKEYUP | WM_CHAR);
-        if is_keyboard_msg && ((self.egui_wants_keyboard && self.egui_wants_pointer) || self.is_focused) {
-            return false; // Input consumed by the UI, don't pass to game.
-        }
-
         // Check if the message is a mouse input event.
         let is_mouse_msg = matches!(
             umsg,
@@ -102,34 +123,19 @@ impl UiManager {
             | WM_LBUTTONDBLCLK | WM_RBUTTONDBLCLK | WM_MBUTTONDBLCLK | WM_XBUTTONDBLCLK
             | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MOUSEWHEEL | WM_INPUT
         );
-        if is_mouse_msg && (self.egui_wants_pointer || self.is_focused) {
+        if is_mouse_msg && ui_demands_cursor {
+            return false; // Input consumed by the UI, don't pass to game.
+        }
+
+        // Check if the message is a keyboard input event.
+        let is_keyboard_msg = matches!(umsg, WM_KEYUP | WM_KEYDOWN | WM_SYSKEYDOWN | WM_SYSKEYUP | WM_CHAR);
+        if is_keyboard_msg && ((self.egui_wants_keyboard && self.egui_wants_pointer) || self.is_focused) {
             return false; // Input consumed by the UI, don't pass to game.
         }
 
         // If we've reached this point, the input was not consumed by the UI
         // and should be passed on to the game.
         true
-    }
-
-    pub fn toggle_focus(&mut self) {
-        self.is_focused = !self.is_focused;
-        self.shared_state.is_overlay_focused = self.is_focused;
-
-        let input_stack_system = self.engine_instance.input_stack_system();
-        if self.input_context.is_none() {
-            let ctx_ptr = input_stack_system.push_input_context();
-            self.input_context = Some(SendableContext(ctx_ptr));
-        }
-
-        let ctx = self.input_context.as_ref().unwrap().0;
-
-        if self.is_focused {
-            input_stack_system.enable_input_context(ctx, true);
-            input_stack_system.set_cursor_visible(ctx, false);
-            input_stack_system.set_mouse_capture(ctx, true);
-        } else {
-            input_stack_system.enable_input_context(ctx, false);
-        }
     }
 }
 
