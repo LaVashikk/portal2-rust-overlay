@@ -26,7 +26,6 @@ pub struct EguiDx9<T> {
     prims: Vec<MeshDescriptor>,
     last_idx_capacity: usize,
     last_vtx_capacity: usize,
-    should_reset: bool,
 }
 
 unsafe impl<T> Send for EguiDx9<T> {}
@@ -64,15 +63,19 @@ impl<T: Send> EguiDx9<T> {
             prims: Vec::new(),
             last_idx_capacity: 0,
             last_vtx_capacity: 0,
-            should_reset: false,
         }
     }
 
     pub fn pre_reset(&mut self) {
         self.buffers.delete_buffers();
         self.tex_man.deallocate_textures();
+    }
 
-        self.should_reset = true;
+    pub fn post_reset(&mut self, dev: &IDirect3DDevice9) {
+        self.ctx = Context::default();
+        self.buffers = Buffers::create_buffers(dev, 16384, 16384);
+        self.tex_man.reallocate_textures(dev);
+        self.ctx.request_repaint();
     }
 
     pub fn present(&mut self, dev: &IDirect3DDevice9) {
@@ -80,21 +83,10 @@ impl<T: Send> EguiDx9<T> {
             return;
         }
 
-        if self.should_reset {
-            self.buffers = Buffers::create_buffers(dev, 16384, 16384);
-            self.tex_man.reallocate_textures(dev);
-        }
-
         let output = self.ctx.run(self.input_man.collect_input(), |ctx| {
             // safe. present will never run in parallel.
             (self.ui_fn)(ctx, &mut self.ui_state)
         });
-
-        if self.should_reset {
-            self.ctx.request_repaint();
-
-            self.should_reset = false;
-        }
 
         if !output.textures_delta.is_empty() {
             self.tex_man.process_set_deltas(dev, &output.textures_delta);
@@ -204,8 +196,8 @@ impl<T: Send> EguiDx9<T> {
                 egui::OutputCommand::CopyText(text) => {
                     let _ = WindowsClipboardContext.set_contents(text);
                 }
-                egui::OutputCommand::CopyImage(_) => {}
                 egui::OutputCommand::OpenUrl(_) => {}
+                _ => {}
             }
         }
     }

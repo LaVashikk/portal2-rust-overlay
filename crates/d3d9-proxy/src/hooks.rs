@@ -145,10 +145,17 @@ unsafe extern "system" fn hooked_reset(
     this: IDirect3DDevice9,
     ppresentationparameters: *mut D3DPRESENT_PARAMETERS,
 ) -> HRESULT {
-    crate::renderer::handle_device_reset();
+    // Call pre_reset for egui
+    crate::renderer::handle_pre_reset();
 
     // Call the original `Reset` function.
-    unsafe { O_RESET.unwrap()(this, ppresentationparameters) }
+    let result = unsafe { O_RESET.unwrap()(this.clone(), ppresentationparameters) };
+    if result.is_ok() {
+        // Now we can call post_reset for egui
+        crate::renderer::handle_post_reset(&this);
+    }
+
+    result
 }
 
 

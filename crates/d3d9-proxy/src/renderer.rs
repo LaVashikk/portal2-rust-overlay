@@ -64,9 +64,7 @@ pub fn initialize(hwnd: HWND, device: &IDirect3DDevice9) {
             false,
         );
 
-        let mutex_renderer = Mutex::new(egui_renderer);
-
-        if EGUI_RENDERER.set(mutex_renderer).is_err() {
+        if EGUI_RENDERER.set(Mutex::new(egui_renderer)).is_err() {
             log::error!("Egui renderer already initialized!");
             return;
         }
@@ -93,12 +91,21 @@ pub fn render(device: &IDirect3DDevice9) {
     }
 }
 
-/// Handling D3D9 device reset.
-pub fn handle_device_reset() {
-    log::warn!("D3D9 device is resetting. Notifying Egui.");
+/// Called before D3D9 Reset to free resources.
+pub fn handle_pre_reset() {
+    log::warn!("D3D9 device is resetting. Releasing Egui resources.");
     if let Some(mutex) = EGUI_RENDERER.get() {
         if let Ok(mut renderer) = mutex.lock() {
             renderer.pre_reset();
+        }
+    }
+}
+/// Called after a D3D9 Reset to recreate resources.
+pub fn handle_post_reset(device: &IDirect3DDevice9) {
+    log::info!("D3D9 device has been reset. Recreating Egui resources...");
+    if let Some(mutex) = EGUI_RENDERER.get() {
+        if let Ok(mut renderer) = mutex.lock() {
+            renderer.post_reset(device);
         }
     }
 }
