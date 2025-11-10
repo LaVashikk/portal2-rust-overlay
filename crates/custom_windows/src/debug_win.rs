@@ -10,7 +10,7 @@ impl Window for DebugWindow {
     fn name(&self) -> &'static str { "Debug Window" }
     fn toggle(&mut self) { self.is_closed = !self.is_closed; }
     fn is_open(&self) -> bool { !self.is_closed }
-    fn is_should_render(&self, shared_state: &SharedState, _engine: &engine_api::Engine) -> bool {
+    fn is_should_render(&self, shared_state: &SharedState, _engine: &source_sdk::Engine) -> bool {
         shared_state.is_overlay_focused || self.force_draw
     }
 
@@ -26,7 +26,7 @@ impl Window for DebugWindow {
         true // input should be passed to the game
     }
 
-    fn draw(&mut self, ctx: &egui::Context, _shared_state: &mut SharedState, engine: &engine_api::Engine) {
+    fn draw(&mut self, ctx: &egui::Context, _shared_state: &mut SharedState, engine: &source_sdk::Engine) {
         egui::Window::new(self.name())
             .collapsible(false)
             .resizable(true)

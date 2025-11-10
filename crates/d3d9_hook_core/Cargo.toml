@@ -1,11 +1,10 @@
 [package]
-name = "overlay-ui"
+name = "d3d9_hook_core"
 publish.workspace = true
 edition.workspace = true
 version.workspace = true
 
 [dependencies]
-egui.workspace = true
+log.workspace = true
+anyhow.workspace = true
 windows.workspace = true
-engine-api.workspace = true
-log = "0.4.22"

@@ -1,6 +1,7 @@
 use std::fs::File;
 use log::LevelFilter;
 use simplelog::{CombinedLogger, Config, TermLogger, WriteLogger, TerminalMode, ColorChoice};
+
 /// Available values: Off, Error, Warn, Info, Debug, Trace
 const LOG_LEVEL: LevelFilter = LevelFilter::Info;
 

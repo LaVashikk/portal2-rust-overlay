@@ -1,3 +1,7 @@
+//! source-sdk: A crate for interacting with the Source engine's C++ interfaces.
+//!
+//! This crate provides a safe and ergonomic API for interacting with the Source engine's C++ interfaces.
+//! It uses a signature-based approach to find the interfaces and their methods in memory.
 use std::{ffi::c_void, slice};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -19,8 +23,6 @@ pub struct Engine {
     client: IVEngineClient,
     input_stack_system: IInputStackSystem,
     icvar: ICvar,
-    // todo you can add more interfaces here, e.g.:
-    // pub entity_list: IClientEntityList,
 }
 
 /// # Safety

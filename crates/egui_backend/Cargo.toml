@@ -1,9 +1,9 @@
 [package]
-name = "egui-d3d9"
+name = "egui_backend"
 version = "0.4.0"
 authors = ["unknowntrojan"]
 description = "D3D9 backend for egui"
-repository = "https://github.com/unknowntrojan/egui-d3d9"
+repository = "https://github.com/unknowntrojan/egui_backend"
 
 license = "MIT"
 edition = "2024"
@@ -35,4 +35,4 @@ windows = { version = "0.59", features = [
 windows-registry = "0.4.0"
 
 clipboard = "0.5.0"
-egui = "0.31"
+egui.workspace = true

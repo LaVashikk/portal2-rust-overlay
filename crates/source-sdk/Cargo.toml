@@ -1,9 +1,10 @@
 [package]
-name = "engine-api"
+name = "source-sdk"
 publish.workspace = true
 edition.workspace = true
 version.workspace = true
 
 [dependencies]
-windows.workspace = true
+log = "0.4"
 bitflags = "2.5.0"
+windows.workspace = true # todo!

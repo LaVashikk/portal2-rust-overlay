@@ -6,3 +6,12 @@ rustflags = ["-C", "link-arg=--def=d3d9.def"]
 
 [build]
 target = "i686-pc-windows-gnu"
+
+[alias]
+build-d3d9 = "build --target i686-pc-windows-msvc --release"
+build-client = "build --target i686-pc-windows-msvc --release -p injector_client_wrapper"
+build-plugin = "build --target i686-pc-windows-msvc --release -p injector_server_plugin"
+
+gnu-build-d3d9 = "build --target i686-pc-windows-gnu --release"
+gnu-build-client = "build --target i686-pc-windows-gnu --release -p injector_client_wrapper"
+gnu-build-plugin = "build --target i686-pc-windows-gnu --release -p injector_server_plugin"

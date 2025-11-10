@@ -1,0 +1,17 @@
+[package]
+name = "injector_client_wrapper"
+publish.workspace = true
+edition.workspace = true
+version.workspace = true
+[lints]
+workspace = true
+
+[lib]
+name = "client"
+crate-type = ["cdylib"]
+
+[dependencies]
+log.workspace = true
+windows.workspace = true
+overlay_runtime.workspace = true
+d3d9_hook_core.workspace = true
