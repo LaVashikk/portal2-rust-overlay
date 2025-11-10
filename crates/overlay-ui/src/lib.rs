@@ -1,3 +1,8 @@
+//! overlay-ui: The crate that defines the UI of the overlay.
+//!
+//! This crate is responsible for defining the UI of the overlay. It contains the `Window` trait,
+//! which every window must implement, and the `regist_windows` function, which assembles and
+//! returns a collection of all active UI windows.
 use egui::Context;
 use engine_api::Engine;
 
@@ -9,7 +14,7 @@ pub struct SharedState {
 
 /// Trait that every window must implement.
 #[allow(dead_code)]
-pub trait Window: std::fmt::Debug { // todo debug
+pub trait Window: std::fmt::Debug { //? todo: for debug
     /// The name of the window, used for the title.
     fn name(&self) -> &'static str;
 

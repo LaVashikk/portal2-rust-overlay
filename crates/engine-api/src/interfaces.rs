@@ -45,7 +45,7 @@ pub unsafe fn find_interface<T>(
         Ok(handle) if !handle.is_invalid() => handle,
         _ => {
             // This is a critical error. The module should already be loaded by the game.
-            eprintln!("[MOD] Failed to get module handle for: {}\0", String::from_utf8_lossy(module_name));
+            log::error!("Failed to get module handle for: {}\0", String::from_utf8_lossy(module_name));
             return std::ptr::null_mut();
         }
     };
@@ -55,7 +55,7 @@ pub unsafe fn find_interface<T>(
         match unsafe { GetProcAddress(module_handle, PCSTR(b"CreateInterface\0".as_ptr())) } {
             Some(addr) => addr,
             None => {
-                eprintln!("[MOD] 'CreateInterface' not found in: {}", String::from_utf8_lossy(module_name));
+                log::error!("'CreateInterface' not found in: {}", String::from_utf8_lossy(module_name));
                 return std::ptr::null_mut();
             }
         };
