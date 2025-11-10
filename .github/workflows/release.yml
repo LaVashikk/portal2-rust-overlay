@@ -1,0 +1,190 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-i686-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: i686-pc-windows-msvc
+
+      - name: Ensure target is installed
+        shell: pwsh
+        run: rustup target add i686-pc-windows-msvc
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Convert release.toml to JSON
+        shell: python
+        run: |
+          import json, tomllib, pathlib, sys
+          p = pathlib.Path('release.toml')
+          if not p.exists():
+              print("release.toml not found in the repository root.", file=sys.stderr)
+              sys.exit(1)
+          data = tomllib.loads(p.read_text(encoding='utf-8'))
+          pathlib.Path('release.json').write_text(json.dumps(data), encoding='utf-8')
+
+      - name: Generate Cargo Metadata
+        shell: pwsh
+        run: |
+          cargo metadata --format-version=1 --no-deps | Set-Content -Path metadata.json -Encoding utf8
+
+      - name: Build Workspace and Package Artifacts
+        id: build_and_package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $targetArch = "i686-pc-windows-msvc"
+
+          # --- 1. Build the entire workspace once for reliability and speed ---
+          Write-Host "Building entire workspace for target $targetArch..."
+          cargo build --release --workspace --target $targetArch
+          if ($LASTEXITCODE -ne 0) {
+            throw "Cargo workspace build failed. See error log above."
+          }
+          Write-Host "Workspace build successful."
+
+          # --- 2. Load configuration and metadata ---
+          $config = Get-Content -Path release.json -Raw | ConvertFrom-Json
+          $metadata = Get-Content -Path metadata.json -Raw | ConvertFrom-Json
+          $artifactPaths = @()
+
+          # --- 3. Loop through targets and intelligently package them ---
+          foreach ($targetConfig in $config.targets) {
+            if (-not $targetConfig.enabled) {
+              Write-Host "Skipping disabled target: $($targetConfig.crate_name)"
+              continue
+            }
+
+            $crateName = $targetConfig.crate_name
+            Write-Host "Processing target: $crateName"
+
+            # --- Find the crate's metadata ---
+            $packageMeta = $metadata.packages | Where-Object { $_.name -eq $crateName } | Select-Object -First 1
+            if (-not $packageMeta) {
+              throw "Could not find metadata for package '$crateName' in metadata.json"
+            }
+
+            # --- Discover the cdylib artifact name from metadata ---
+            $libTarget = $packageMeta.targets | Where-Object { $_.kind -contains 'cdylib' } | Select-Object -First 1
+            if (-not $libTarget) {
+              throw "Package '$crateName' does not have a 'cdylib' target in its Cargo.toml."
+            }
+            $dllFileName = "$($libTarget.name).dll"
+            $dllPath = "target/$targetArch/release/$dllFileName"
+            
+            Write-Host "Discovered DLL for '$crateName' -> '$dllFileName' at path '$dllPath'"
+
+            if (-not (Test-Path $dllPath)) {
+              throw "Build succeeded but the discovered DLL was not found at '$dllPath'."
+            }
+
+            # --- Stage files for zipping ---
+            $stagingPath = "staging/$crateName"
+            if (Test-Path $stagingPath) { Remove-Item $stagingPath -Recurse -Force }
+            New-Item $stagingPath -ItemType Directory | Out-Null
+
+            Write-Host "Staging files for $($targetConfig.archive_name)..."
+            foreach ($file in $targetConfig.files) {
+              $sourcePath = if ($file.source -eq '$DLL') { $dllPath } else { $file.source }
+              $destPath = Join-Path $stagingPath $file.destination
+              if (-not (Test-Path $sourcePath)) { throw "Staging failed: Source file not found at '$sourcePath'" }
+              New-Item -Path (Split-Path -Path $destPath -Parent) -ItemType Directory -Force | Out-Null
+              Copy-Item -Path $sourcePath -Destination $destPath -Recurse -Force
+            }
+
+            # --- Create Archive and Checksum ---
+            $zipPath = $targetConfig.archive_name
+            Compress-Archive -Path (Join-Path $stagingPath '*') -DestinationPath $zipPath -Force
+            $artifactPaths += $zipPath
+            
+            $checksumPath = "$zipPath.sha256"
+            (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLower() | Set-Content $checksumPath
+            $artifactPaths += $checksumPath
+          }
+
+          # --- Output artifacts list for the release step ---
+          $artifacts_list = $artifactPaths -join "`n"
+          "artifacts<<EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $artifacts_list | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Prepare Release Body
+        id: prepare_body
+        shell: pwsh
+        run: |
+          $repo = "${{ github.repository }}"
+          $tag = "${{ github.ref_name }}"
+          $baseUrl = "https://github.com/$repo/releases/download/$tag"
+          $config = Get-Content -Path release.json -Raw | ConvertFrom-Json
+
+          # --- Header ---
+          $body = $config.release_notes_header + "`n`n"
+
+          # --- Downloads Table ---
+          $body += "## Downloads`n`n"
+          $body += "| File | Checksum |`n"
+          $body += "|---|---|`n"
+          foreach ($target in $config.targets) {
+            if ($target.enabled) {
+              $zipFile = $target.archive_name
+              $checksumFile = "$zipFile.sha256"
+              $zipLink = "[$zipFile]($baseUrl/$zipFile)"
+              $checksumLink = "[SHA256]($baseUrl/$checksumFile)"
+              $body += "| $zipLink | $checksumLink |`n"
+            }
+          }
+          $body += "`n"
+
+          # --- Changelog ---
+          $body += "## Release Notes`n`n"
+          $notes = "No release notes found for this version."
+          $changelogPath = "CHANGELOG.md"
+          if (Test-Path $changelogPath) {
+            $version = $tag.TrimStart('v')
+            $changelogContent = Get-Content -Path $changelogPath -Raw
+            $regex = "(?sm)## \[`?$version`?\](.*?)(?=\n## \[|$)"
+            $match = [regex]::Match($changelogContent, $regex)
+            if ($match.Success) {
+              $notes = $match.Value
+            }
+          }
+          $body += $notes
+
+          # --- Save to file ---
+          $body | Out-File -FilePath "releasenotes.md" -Encoding utf8
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.build_and_package.outputs.artifacts }}
+          name: "Release ${{ github.ref_name }}"
+          body_path: "releasenotes.md"
+          prerelease: ${{ contains(github.ref_name, '-') }}

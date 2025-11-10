@@ -1,0 +1,49 @@
+# Configuration for the release CI/CD pipeline.
+
+# A header to be prepended to the GitHub release notes.
+# Useful for quick installation instructions or general announcements.
+#-----
+release_notes_header = """
+## Quick Install
+
+1.  Download the appropriate `.zip` archive for your desired injection method.
+2.  Follow the instructions in the project `README.md` for that method.
+3.  Press `F3` in-game to toggle the overlay focus.
+"""
+
+[[targets]]
+enabled = true
+crate_name = "injector_d3d9_proxy"
+archive_name = "injector_d3d9_proxy.zip"
+
+# Defines the contents of the zip archive.
+# `source` is the path in the repo, or "$DLL" for the compiled artifact.
+# `destination` is the path inside the zip file. A `.` means the root.
+files = [
+    { source = "$DLL", destination = "bin/d3d9.dll" },
+    { source = "LICENSE", destination = "bin/d3d9_hook_LICENSE" },
+    { source = "README.md", destination = "README.md" }
+]
+
+[[targets]]
+enabled = true
+crate_name = "injector_server_plugin"
+archive_name = "injector_server_plugin.zip"
+files = [
+    # The server plugin requires a specific structure and VDF file.
+    { source = "$DLL", destination = "portal2/addons/egui_overlay_plugin.dll" },
+    { source = "assets/portal2_plugin.vdf", destination = "portal2/addons/overlay.vdf" },
+    { source = "LICENSE", destination = "LICENSE" },
+    { source = "README.md", destination = "README.md" }
+]
+
+[[targets]]
+enabled = false # Disabled by default
+crate_name = "injector_client_wrapper"
+archive_name = "injector_client_wrapper.zip"
+files = [
+    # This method replaces the original client.dll
+    { source = "$DLL", destination = "portal2/bin/client.dll" },
+    { source = "LICENSE", destination = "LICENSE" },
+    { source = "README.md", destination = "README.md" }
+]
