@@ -7,7 +7,7 @@ version.workspace = true
 workspace = true
 
 [lib]
-name = "d3d9_hook"
+name = "egui_overlay"
 crate-type = ["cdylib"]
 
 [dependencies]
