@@ -1,0 +1,14 @@
+[package]
+name = "d3d9-present-hook"
+publish.workspace = true
+edition.workspace = true
+version.workspace = true
+
+[lib]
+name = "d3d9_present_hook"
+crate-type = ["rlib"]
+
+[dependencies]
+log.workspace = true
+anyhow.workspace = true
+windows.workspace = true
