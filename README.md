@@ -1,148 +1,199 @@
-# Portal 2 Rust Overlay
 
-A work-in-progress project to create a D3D9-based in-game overlay for Portal 2 using Rust. It leverages `egui` for the user interface and operates by proxying the `d3d9.dll` library.
+# Portal 2 Rust Overlay Framework
 
-While currently tailored for Portal 2, the modular architecture is designed with potential support for other Source Engine games in mind.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=flat&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20x86-blue)](https://www.microsoft.com/windows)
+[![Source Engine](https://img.shields.io/badge/Source%20Engine-Compatible-orange)](https://developer.valvesoftware.com/wiki/Source)
 
-## ✨ Current Status: Stable & Extensible
+This repository is a powerful framework and public template for creating custom in-game tools and UIs for Source Engine games, built with Rust and the `egui` library. Click the **"Use this template"** button above to get started with a clean copy of the framework for your own project.
 
-The project has moved beyond the "raw concept" stage and now stands on a solid, modular foundation. Thanks to a major architectural refactoring, the codebase is now split into logical crates, features a clean dependency injection model, and is ready for new features and community contributions.
+**[Get Started](#-quick-start)** • **[Features](#-features)** • **[Showcase](#-showcase)** • **[Documentation](CONTRIBUTING.md)** • **[Support](https://github.com/LaVashikk/portal2-rust-overlay/issues)**
 
-The use of `egui` for the entire front-end means that **any existing `egui` application or UI component can be easily ported** into this overlay with minimal changes, making it a powerful platform for creating complex in-game tools.
+---
 
-### Demo
+# 🚀 Quick Test (Using Pre-built Release)
 
-#### 1. Real-Time Game Variable Manipulation (`fogui`)
+The easiest way to try the overlay is with a pre-built version.
 
-This demonstrates direct, real-time control over the Source Engine's CVar system. The `fogui` menu allows you to manipulate all aspects of the in-game fog using standard `egui` widgets like sliders, checkboxes, and a **full-featured color picker**. Changes are reflected in the game instantly, showcasing the seamless bridge between the UI and the game engine.
+1.  Go to the [**Releases Page**](https://github.com/LaVashikk/portal2-rust-overlay/releases) and download the `injector_d3d9_proxy.zip` file.
+2.  Extract `d3d9.dll` from the zip file.
+3.  Place `d3d9.dll` into your game's `bin` folder (e.g., `C:\Steam\steamapps\common\Portal 2\bin`).
+4.  Launch the game.
+5.  Press **F3** in-game to toggle the overlay menu's focus.
+
+### What You Can Build
+
+Use this framework as a foundation for a wide variety of tools:
+- **Debug Tools** - Real-time variable monitoring, performance profilers
+- **Gameplay Enhancements** - Custom HUDs, information overlays
+- **Development Tools** - Entity inspectors, playtest surveys
+- **Training Tools** - Practice modes, trajectory visualizers
+
+# ✨ Showcase
+
+## Projects Built with this Framework
+
+- [Portal 2 Survey Tool](https://github.com/LaVashikk/portal2-survey-tool) — advanced in-game feedback and bug reporting
+- Your project here — see how to add it in [CONTRIBUTING.md](CONTRIBUTING.md#adding-your-project-to-showcase)
+
+> [TIP] 
+> Add the `p2-rust-overlay-project` topic to your repo for discoverability!
+
+
+## Demonstrations
+
+### Real-Time Engine Control
+Direct manipulation of game variables with immediate visual feedback:
 
 https://github.com/user-attachments/assets/d99e9ac5-a6ff-471c-8b4e-cc9f0139e185
 
-#### 2. Proof-of-Concept Custom Game Menu
-
-This is a proof-of-concept for building a completely custom, modern main menu using `egui`. It shows the potential of the overlay to not just add supplementary widgets, but to serve as a complete replacement for the game's default UI.
+### Custom UI Replacement
+Modern, responsive interface replacing game's default UI:
 
 https://github.com/user-attachments/assets/bf2acc21-aca0-4191-a110-228df20afbf8
 
-#### 3. Seamless Portability of `egui` Applications
+### External App Integration
+Any `egui` application can be ported seamlessly:
 
-One of the key design goals was to make porting existing `egui` code effortless. To prove this, the external project **[Gemini-eGUI](https://github.com/LaVashikk/Gemini-eGUI)** was integrated into the overlay. (no way, vibe modding? :D)
+<img width="1280" alt="Gemini-eGUI integration" src="https://github.com/user-attachments/assets/2a3a405e-65b4-44c0-97e5-1e355b1a5184" />
 
-<img width="1280" height="719" alt="image" src="https://github.com/user-attachments/assets/2a3a405e-65b4-44c0-97e5-1e355b1a5184" />
+## Installation Guide
 
-## Features
+## Prerequisites
 
-*   **D3D9 Proxying:** Seamlessly integrates into the game's rendering pipeline.
-*   **Immediate Mode GUI:** Uses the powerful and easy-to-use `egui` framework for all UI. Any existing `egui` app can be easily ported.
-*   **Direct Game Engine Interaction:** Interfaces directly with Source Engine components like the CVar system to read and write game variables in real-time.
+- Windows 10/11 (x64 with x86 game support)
+- [Rust toolchain](https://rustup.rs/) with `i686-pc-windows-msvc` or `i686-pc-windows-gnu` target
+- Visual Studio 2019+ with C++ tools OR MinGW-w64
+- Source Engine game
+
+## Choose Your Injection Method
+This section explains how to install pre-built releases for each injection method.
+
+<table>
+<tr>
+<th>Method</th>
+<th>Output File</th>
+<th>Best For</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+<tr>
+<td><b>D3D9 Proxy</b><br><code>injector_d3d9_proxy</code></td>
+<td><code>d3d9.dll</code></td>
+<td>Most Source games</td>
+<td>✓ Universal<br>✓ Simple setup<br>✓ No game files modified</td>
+<td>⚠️ No Vulkan Support<br>⚠️ Installation in sourcemods is not possible</td>
+</tr>
+<tr>
+<td><b>Server Plugin</b><br><code>injector_server_plugin</code></td>
+<td><code>plugin.dll</code></td>
+<td><b>Portal 2 (recommended)</b></td>
+<td>✓ Clean integration<br>✓ Works with sourcemods<br>✓ Easy to remove<br>✓ Hot-swap in runtime<br>✓ Vulkan Support</td>
+<td>⚠️ Plugin support required. Tested only with Portal 2</td>
+</tr>
+<tr>
+<td><b>Client Wrapper</b><br><code>injector_client_wrapper</code></td>
+<td><code>client.dll</code></td>
+<td>Advanced scenarios</td>
+<td>✓ Deep integration<br>✓ Vulkan Support</td>
+<td>⚠️ Modifies game files<br>⚠️ Complex setup</td>
+</tr>
+</table>
+
+
+<br>
+
+<details>
+<summary><strong>Method 1: D3D9 Proxy (Universal)</strong></summary>
+
+1.  Download `injector_d3d9_proxy.zip` from the [Releases Page](https://github.com/LaVashikk/portal2-rust-overlay/releases).
+2.  Place the extracted `d3d9.dll` into your game's `bin` directory (e.g., `C:\...\[GAME]\bin\`).
+</details>
+
+<details>
+<summary><strong>Method 2: Server Plugin (Portal 2 Recommended)</strong></summary>
+
+1.  Download `injector_server_plugin.zip` from the [Releases Page](https://github.com/LaVashikk/portal2-rust-overlay/releases).
+2.  Place the extracted `egui_overlay_plugin.dll` into `...Portal 2\portal2\addons\`.
+3.  Create a new text file named `overlay.vdf` in the `addons` folder with the following content:
+    ```vdf
+    "Plugin"
+    {
+        "file"		"addons/egui_overlay_plugin"
+    }
+    ```
+</details>
+
+<details>
+<summary><strong>Method 3: Client Wrapper (Advanced)</strong></summary>
+
+1.  Go to your game's `bin` folder (e.g., `.../Portal 2/portal2/bin/`).
+2.  **Backup your original `client.dll`** by renaming it to `client_original.dll`.
+3.  Download `injector_client_wrapper.zip` from the [Releases Page](https://github.com/LaVashikk/portal2-rust-overlay/releases).
+4.  Place the extracted `client.dll` into the `bin` folder.
+</details>
 
 ---
 
-## Installation (For Users)
-todo, later.
----
+# 🧑‍💻 For Developers
 
-## Quick Development Start: Adding a New Window
+Ready to create your own tools? This project is a template designed for extension. All development instructions, from setting up your environment to building from source and adding new windows, are in our comprehensive **[Developer Guide](CONTRIBUTING.md)**.
 
-### 1. Create Your Window Logic
+## Project Structure
 
-All UI logic lives in the `crates/overlay-ui` crate.
-
-Create a new file for your window, for example, `crates/overlay-ui/src/my_window.rs`. Inside, define a struct and implement the `Window` trait for it.
-
-```rust
-// in crates/overlay-ui/src/my_window.rs
-
-use crate::{Window, SharedState};
-use engine_api::Engine;
-
-#[derive(Debug)]
-pub struct MyCoolWindow {
-    is_open: bool,
-    counter: i32,
-}
-impl Default for MyCoolWindow {
-    fn default() -> Self {
-        Self { is_open: true, counter: 0 }
-    }
-}
-
-impl Window for MyCoolWindow {
-    fn name(&self) -> &'static str { "My Cool Window" }
-
-    fn is_open(&self) -> bool { self.is_open }
-
-    fn toggle(&mut self) { self.is_open = !self.is_open; }
-
-    fn draw(&mut self, ctx: &egui::Context, shared_state: &mut SharedState, engine: &Engine) {
-        if !shared_state.is_overlay_focused { return; } // optional feature
-
-        egui::Window::new(self.name())
-            .open(&mut self.is_open)
-            .show(ctx, |ui| {
-                ui.label("This is my cool new window!");
-                if ui.button("Click me!").clicked() {
-                    self.counter += 1;
-                }
-                ui.label(format!("Counter: {}", self.counter));
-            });
-    }
-}
+```
+crates/
+├── injector_*/          # Entry points (don't modify)
+├── hook_core/           # D3D9 hooking core
+├── overlay_runtime/     # Manages UI state, input, and rendering loop
+├── egui_backend/        # The egui rendering backend for D3D9
+├── source_sdk/          # Safe bindings to Source Engine functions
+└── custom_windows/      # **YOUR CODE GOES HERE! 🎯**
 ```
 
-### 2. Register Your New Window
+## Troubleshooting
 
-Now, tell the application about your new window. Open `crates/overlay-ui/src/lib.rs` and add your module and window instance to the `regist_windows` function.
+<details>
+<summary><b>Common Issues & Solutions</b></summary>
 
-```rust
-// in crates/overlay-ui/src/lib.rs
+| Issue | Solution |
+|-------|----------|
+| **Overlay not appearing** | Press `F3` to toggle focus. Check the in-game console and `d3d9_proxy_mod.log` (in the game directory) for errors. |
+| **Game crashes on start** | Ensure you are using a 32-bit game. Verify game files in Steam. Make sure you placed the DLL in the correct folder (`bin` is common). |
+| **Mouse input doesn't work** | Run the game in windowed or borderless-windowed mode. |
+| **Performance drops** | Disable VSync, reduce UI complexity |
 
-mod debug_win;
-mod fogui;
-mod my_window; // 1. Declare your new module
-
-pub fn regist_windows() -> Vec<Box<dyn Window + Send>> {
-    vec![
-        Box::new(OverlayText::default()),
-        Box::new(debug_win::DebugWindow::default()),
-        Box::new(fogui::FogWindow::default()),
-        Box::new(my_window::MyCoolWindow::default()), // 2. Add an instance here
-    ]
-}
-```
-
-### 3. Handle Custom Input (Optional)
-
-The `Window` trait provides an optional `on_raw_input` method. This allows your window to react to keyboard or mouse events even when the main overlay is not focused. This is perfect for implementing window-specific hotkeys.
-
-```rust
-// in your `impl Window for MyCoolWindow` block
-
-fn on_raw_input(&mut self, umsg: u32, wparam: u16) -> bool {
-    // If the 'K' key is released, toggle this window
-    if umsg == windows::Win32::UI::WindowsAndMessaging::WM_KEYUP {
-        if wparam == windows::Win32::UI::Input::KeyboardAndMouse::VK_K.0 {
-            self.toggle();
-        }
-    }
-    true // Return true to allow the game to also process this input
-}
-```
-
-### 4. Compile the Project
-
-Compile the project to produce the final `d3d9.dll`.
-
-```bash
-cargo build --release --target i686-pc-windows-gnu
-```
-
-The resulting DLL will be located in `target/i686-pc-windows-gnu/release/`. That's it! Your new window is now part of the overlay.
+</details>
 
 ## Contributing
 
-Contributions are welcome! Feel free to open an issue to discuss a new feature or submit a pull request with your improvements.
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Setting up development environment
+- Keeping your fork updated
+- Submitting pull requests
+- Code style guidelines
+
+## Acknowledgments
+
+This project wouldn't have been possible without the inspiration and help from several projects and individuals in the community.
+
+- [egui](https://github.com/emilk/egui) - Immediate mode GUI framework
+- [p2-rtx](https://github.com/xoxor4d/p2-rtx) for inspiring the project and showing that creating external custom GUIs was possible.
+- [Portal 2 Multiplayer Mod Plugin](https://github.com/Portal-2-Multiplayer-Mod/Portal-2-Multiplayer-Mod-Plugin) for serving as a valuable codebase and reference.
+
+Special thanks to **[@OrsellGit](https://github.com/OrsellGit)** and **[@0xNULLderef](https://github.com/0xNULLderef)** for their invaluable technical assistance with the Source Engine plugin system.
+
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details. Use freely in your projects!
+
+---
+
+<p align="center">
+  <b>Ready to build your own overlay?</b><br>
+  <a href="https://github.com/LaVashikk/portal2-rust-overlay/generate">Use this template</a> •
+  <a href="CONTRIBUTING.md">Read the docs</a> •
+  <a href="https://github.com/LaVashikk/portal2-rust-overlay/issues">Get help</a>
+</p>

@@ -7,7 +7,7 @@ version.workspace = true
 workspace = true
 
 [lib]
-name = "egui_overlay"
+name = "egui_overlay_plugin"
 crate-type = ["cdylib"]
 
 [dependencies]
