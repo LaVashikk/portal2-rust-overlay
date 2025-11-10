@@ -5,7 +5,7 @@
 //! - Patch IDirect3DDevice9::Reset (index 16) and Present (index 17).
 //! - Expose two entrypoints:
 //!   - install_on_d3d9(d3d9_ptr, callbacks) — proxy scenario (method 1).
-//!   - start_offsets_hook_thread(module, offsets, delay_ms, callbacks) — client-wrapper/server-plugin (methods 2/3).
+//!   - start_offsets_hook_thread(offsets, delay_ms, callbacks) — client-wrapper/server-plugin (methods 2/3).
 //! - Invoke callbacks for overlay lifecycle: on_device_created / on_present / on_pre_reset / on_post_reset.
 
 #![cfg(all(target_os = "windows", target_pointer_width = "32"))]
@@ -136,9 +136,8 @@ pub unsafe fn install_on_d3d9(d3d9: *mut IDirect3D9, cb: &'static Callbacks) -> 
     Ok(())
 }}
 
-/// Start a thread that tries to find the device via module+offsets (methods 2/3).
+/// Start a thread that tries to find the device via offsets (methods 2/3).
 pub fn start_offsets_hook_thread(
-    module: &'static str,
     offsets: &'static [usize],
     delay_ms: u64,
     cb: &'static Callbacks,
@@ -154,7 +153,7 @@ pub fn start_offsets_hook_thread(
         }
 
         unsafe {
-            if let Some(device) = get_d3d_device_by_offsets(module, offsets) {
+            if let Some(device) = get_d3d_device_by_offsets(offsets) {
                 install_device_hooks(&device);
 
                 // Resolve HWND from creation parameters
@@ -420,66 +419,72 @@ pub fn uninstall() -> bool {
     }
 }
 
+// Hardcoded renderer modules to scan for the D3D9 device.
+const SHADER_API_MODULES: &[&str] = &["shaderapidx9.dll", "shaderapivk.dll"];
+
 // Offsets-based device acquisition
-unsafe fn get_d3d_device_by_offsets(module: &str, offsets: &[usize]) -> Option<IDirect3DDevice9> { unsafe {
-    log::info!("Attempting to get module handle for {}...", module);
-    let mut module_cstr = Vec::with_capacity(module.len() + 1);
-    module_cstr.extend_from_slice(module.as_bytes());
-    module_cstr.push(0);
-    let shader_api = match GetModuleHandleA(windows::core::PCSTR(module_cstr.as_ptr())) {
-        Ok(h) if !h.is_invalid() => h,
-        _ => {
-            log::error!("{} not found in process.", module);
-            return None;
+unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice9> { unsafe {
+    for &module in SHADER_API_MODULES {
+        log::info!("Attempting to get module handle for {}...", module);
+        let mut module_cstr = Vec::with_capacity(module.len() + 1);
+        module_cstr.extend_from_slice(module.as_bytes());
+        module_cstr.push(0);
+        let shader_api = match GetModuleHandleA(windows::core::PCSTR(module_cstr.as_ptr())) {
+            Ok(h) if !h.is_invalid() => h,
+            _ => {
+                log::debug!("{} not found in process, skipping.", module);
+                continue; // Try the next module
+            }
+        };
+        let base_addr = shader_api.0 as usize;
+        log::info!("{} found at base: 0x{:X}", module, base_addr);
+
+        for (idx, &offset) in offsets.iter().enumerate() {
+            let device_ptr_addr = base_addr + offset;
+            log::debug!(
+                "Trying offset #{} (0x{:X}) -> addr 0x{:X}",
+                idx + 1,
+                offset,
+                device_ptr_addr
+            );
+
+            let device_ptr = *(device_ptr_addr as *const usize);
+            log::debug!("Device pointer: 0x{:X}", device_ptr);
+
+            if device_ptr == 0 || device_ptr < 0x10000 || device_ptr > 0x7FFFFFFF {
+                log::debug!("Invalid pointer value");
+                continue;
+            }
+
+            let vtable_ptr = *(device_ptr as *const usize);
+            log::debug!("VTable: 0x{:X}", vtable_ptr);
+
+            if vtable_ptr == 0 || vtable_ptr < 0x10000 || vtable_ptr > 0x7FFFFFFF {
+                log::debug!("!! Invalid vtable !!");
+                continue;
+            }
+
+            let present_addr = *((vtable_ptr + 17 * 4) as *const usize);
+            log::debug!("  Present function: 0x{:X}", present_addr);
+
+            if present_addr == 0 || present_addr < 0x10000 {
+                log::debug!("  Invalid Present address");
+                continue;
+            }
+
+            let device: IDirect3DDevice9 = std::mem::transmute(device_ptr as *mut c_void);
+
+            log::info!(
+                "Valid D3D9 device found in {} via offset #{}!",
+                module,
+                idx + 1
+            );
+
+            std::mem::forget(device.clone());
+            return Some(device);
         }
-    };
-    let base_addr = shader_api.0 as usize;
-    log::info!("{} found at base: 0x{:X}", module, base_addr);
-
-    for (idx, &offset) in offsets.iter().enumerate() {
-        let device_ptr_addr = base_addr + offset;
-        log::debug!(
-            "Trying offset #{} (0x{:X}) -> addr 0x{:X}",
-            idx + 1,
-            offset,
-            device_ptr_addr
-        );
-
-        let device_ptr = *(device_ptr_addr as *const usize);
-        log::debug!("Device pointer: 0x{:X}", device_ptr);
-
-        if device_ptr == 0 || device_ptr < 0x10000 || device_ptr > 0x7FFFFFFF {
-            log::debug!("Invalid pointer value");
-            continue;
-        }
-
-        let vtable_ptr = *(device_ptr as *const usize);
-        log::debug!("VTable: 0x{:X}", vtable_ptr);
-
-        if vtable_ptr == 0 || vtable_ptr < 0x10000 || vtable_ptr > 0x7FFFFFFF {
-            log::debug!("!! Invalid vtable !!");
-            continue;
-        }
-
-        let present_addr = *((vtable_ptr + 17 * 4) as *const usize);
-        log::debug!("  Present function: 0x{:X}", present_addr);
-
-        if present_addr == 0 || present_addr < 0x10000 {
-            log::debug!("  Invalid Present address");
-            continue;
-        }
-
-        let device: IDirect3DDevice9 = std::mem::transmute(device_ptr as *mut c_void);
-
-        log::info!(
-            "Valid D3D9 device found via offset #{}!",
-            idx + 1
-        );
-
-        std::mem::forget(device.clone());
-        return Some(device);
     }
 
-    log::error!("Failed to get device from any offset");
+    log::error!("Failed to get device from any offset in any renderer module.");
     None
 }}

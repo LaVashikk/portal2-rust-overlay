@@ -74,13 +74,12 @@ extern "system" fn DllMain(
 #[unsafe(no_mangle)]
 #[allow(non_snake_case)]
 pub extern "C" fn CreateInterface(name: *const c_char, return_code: *mut i32) -> *mut c_void {
-    overlay_runtime::logger::init();
 
     // Start offsets-based D3D9 hooking exactly as before: delayed thread + offsets.
     INIT_ONCE.call_once(|| {
+        overlay_runtime::logger::init();
         // Using the shared core + overlay callbacks
         d3d9_hook_core::start_offsets_hook_thread(
-            "shaderapidx9.dll",
             &[0xDA5D8usize, 0x179F38usize],
             5000, // 5 seconds delay same as before
             &overlay_runtime::CALLBACKS,

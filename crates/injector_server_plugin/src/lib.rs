@@ -45,7 +45,6 @@ unsafe extern "thiscall" fn plugin_load(_this: *mut c_void, _interface_factory: 
     overlay_runtime::logger::init();
 
     d3d9_hook_core::start_offsets_hook_thread(
-        "shaderapidx9.dll",
         &[0xDA5D8usize, 0x179F38usize],
         500,
         &overlay_runtime::CALLBACKS,
