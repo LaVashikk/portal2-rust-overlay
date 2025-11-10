@@ -1,0 +1,11 @@
+[package]
+name = "custom_windows"
+publish.workspace = true
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+egui.workspace = true
+log.workspace = true
+windows.workspace = true
+source-sdk.workspace = true

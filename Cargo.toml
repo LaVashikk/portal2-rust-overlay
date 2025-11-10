@@ -1,12 +1,23 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/d3d9-proxy",
-    "crates/engine-api",
-    "crates/egui-d3d9",
-    "crates/overlay-ui",
+    # Injectors (final DLLs)
+    "crates/injector_d3d9_proxy",
+    "crates/injector_client_wrapper",
+    "crates/injector_server_plugin",
+
+    # Core functionality
+    "crates/d3d9_hook_core",
+    "crates/egui_backend",
+
+    # Overlay system
+    "crates/overlay_runtime",
+    "crates/custom_windows",
+
+    # Source Engine FFI bindings
+    "crates/source-sdk",
 ]
-default-members = ["crates/d3d9-proxy"]
+default-members = ["crates/injector_d3d9_proxy"]
 
 [workspace.package]
 publish = false
@@ -19,10 +30,13 @@ dead_code = { level = "allow", priority = -1 }
 
 [workspace.dependencies]
 egui = "0.31.1"
+log = "0.4"
 anyhow = "1.0"
-egui-d3d9 = { path = "crates/egui-d3d9" }
-engine-api = { path = "crates/engine-api" }
-overlay-ui = { path = "crates/overlay-ui" }
+egui_backend = { path = "crates/egui_backend" }
+source-sdk = { path = "crates/source-sdk" }
+custom_windows = { path = "crates/custom_windows" }
+d3d9_hook_core = { path = "crates/d3d9_hook_core" }
+overlay_runtime = { path = "crates/overlay_runtime" }
 
 [workspace.dependencies.windows]
 version = "=0.59"

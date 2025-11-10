@@ -31,6 +31,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -77,15 +83,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "d3d9-proxy"
+name = "custom_windows"
 version = "0.1.0"
 dependencies = [
  "egui",
- "egui-d3d9",
- "engine-api",
  "log",
- "overlay-ui",
- "simplelog",
+ "source-sdk",
+ "windows",
+]
+
+[[package]]
+name = "d3d9_hook_core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "log",
  "windows",
 ]
 
@@ -122,7 +134,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui-d3d9"
+name = "egui_backend"
 version = "0.4.0"
 dependencies = [
  "clipboard",
@@ -136,14 +148,6 @@ name = "emath"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e4cadcff7a5353ba72b7fea76bf2122b5ebdbc68e8155aa56dfdea90083fe1b"
-
-[[package]]
-name = "engine-api"
-version = "0.1.0"
-dependencies = [
- "bitflags",
- "windows",
-]
 
 [[package]]
 name = "epaint"
@@ -166,6 +170,35 @@ name = "epaint_default_fonts"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc7e7a64c02cf7a5b51e745a9e45f60660a286f151c238b9d397b3e923f5082f"
+
+[[package]]
+name = "injector_client_wrapper"
+version = "0.1.0"
+dependencies = [
+ "d3d9_hook_core",
+ "log",
+ "overlay_runtime",
+ "windows",
+]
+
+[[package]]
+name = "injector_d3d9_proxy"
+version = "0.1.0"
+dependencies = [
+ "d3d9_hook_core",
+ "log",
+ "overlay_runtime",
+ "windows",
+]
+
+[[package]]
+name = "injector_server_plugin"
+version = "0.1.0"
+dependencies = [
+ "d3d9_hook_core",
+ "log",
+ "overlay_runtime",
+]
 
 [[package]]
 name = "libc"
@@ -255,11 +288,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
-name = "overlay-ui"
+name = "overlay_runtime"
 version = "0.1.0"
 dependencies = [
+ "custom_windows",
+ "d3d9_hook_core",
  "egui",
- "engine-api",
+ "egui_backend",
+ "log",
+ "simplelog",
+ "source-sdk",
  "windows",
 ]
 
@@ -376,6 +414,15 @@ name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
+
+[[package]]
+name = "source-sdk"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "log",
+ "windows",
+]
 
 [[package]]
 name = "syn"
