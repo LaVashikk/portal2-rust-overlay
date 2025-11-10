@@ -1,0 +1,17 @@
+[package]
+name = "client-wrapper"
+publish.workspace = true
+edition.workspace = true
+version.workspace = true
+[lints]
+workspace = true
+
+[lib]
+name = "client"
+crate-type = ["cdylib"]
+
+[dependencies]
+log.workspace = true
+windows.workspace = true
+overlay-app.workspace = true
+d3d9-present-hook.workspace = true

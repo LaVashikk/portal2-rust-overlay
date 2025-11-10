@@ -1,0 +1,16 @@
+[package]
+name = "plugin_d3d9_hook"
+publish.workspace = true
+edition.workspace = true
+version.workspace = true
+[lints]
+workspace = true
+
+[lib]
+name = "plugin_d3d9_hook"
+crate-type = ["cdylib"]
+
+[dependencies]
+log.workspace = true
+overlay-app.workspace = true
+d3d9-present-hook.workspace = true

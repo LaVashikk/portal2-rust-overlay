@@ -1,0 +1,31 @@
+[package]
+name = "client-wrapper"
+publish.workspace = true
+edition.workspace = true
+version.workspace = true
+[lints]
+workspace = true
+
+[lib]
+name = "client"
+crate-type = ["cdylib"]
+
+[dependencies]
+# d3d9-proxy = { path = "../d3d9-proxy" }
+d3d9-proxy.workspace = true
+minhook = { version = "0.2" }  # Важно: default-features = false для 32-bit
+log = "0.4.22"
+simplelog = "0.12.2"
+iced-x86 = { version = "1.17.0" }
+
+
+egui.workspace = true
+egui-d3d9.workspace = true
+windows.workspace = true
+engine-api.workspace = true
+overlay-ui.workspace = true
+
+
+
+# [package.metadata.docs.rs]
+# default-target = "i686-pc-windows-gnu"
