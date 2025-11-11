@@ -38,7 +38,7 @@ pub struct UiManager {
     windows: Vec<Box<dyn custom_windows::Window + Send>>,
     engine_instance: source_sdk::Engine,
     input_context: Option<SendableContext>,
-    cursor_visible_in_engine: bool,
+    cursor_visible_in_gui: bool,
     egui_wants_keyboard: bool,
     egui_wants_pointer: bool,
 
@@ -56,7 +56,7 @@ impl UiManager {
             shared_state: custom_windows::SharedState::default(),
             engine_instance,
             is_focused: false,
-            cursor_visible_in_engine: true,
+            cursor_visible_in_gui: false,
             input_context: None,
             egui_wants_keyboard: false,
             egui_wants_pointer: false,
@@ -88,15 +88,13 @@ impl UiManager {
     pub fn on_input(&mut self, umsg: u32, wparam: WPARAM, _lparam: LPARAM) -> bool {
         use windows::Win32::UI::Input::KeyboardAndMouse::VK_F3;
 
-        if umsg == WM_KEYUP || umsg == WM_SYSKEYDOWN {
-            if wparam.0 as u16 == VK_F3.0 {
-                self.is_focused = !self.is_focused;
-                self.shared_state.is_overlay_focused = self.is_focused;
-            }
+        if matches!(umsg, WM_KEYUP | WM_SYSKEYDOWN) && wparam.0 as u16 == VK_F3.0 {
+            self.is_focused = !self.is_focused;
+            self.shared_state.is_overlay_focused = self.is_focused;
         }
 
         let ui_demands_cursor = self.is_focused || self.egui_wants_pointer;
-        if ui_demands_cursor != self.cursor_visible_in_engine {
+        if ui_demands_cursor != self.cursor_visible_in_gui {
             let input_stack_system = self.engine_instance.input_stack_system();
 
             if self.input_context.is_none() {
@@ -106,18 +104,21 @@ impl UiManager {
             let ctx = self.input_context.as_ref().unwrap().0;
 
             if ui_demands_cursor {
+                log::debug!("GRAD INPUT FROM GAME!");
                 input_stack_system.enable_input_context(ctx, true);
                 input_stack_system.set_cursor_visible(ctx, false);
                 input_stack_system.set_mouse_capture(ctx, true);
             } else {
+                log::debug!("Releasing mouse to game.");
                 input_stack_system.enable_input_context(ctx, false);
             }
-            self.cursor_visible_in_engine = ui_demands_cursor;
+            self.cursor_visible_in_gui = ui_demands_cursor;
         }
 
         let mut should_pass_to_game = true;
         for win in self.windows.iter_mut() {
             if !win.on_raw_input(umsg, wparam.0 as u16) {
+                log::debug!("Raw input handled by window '{}'. Not passing to game", win.name());
                 should_pass_to_game = false;
             }
         }
