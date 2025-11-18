@@ -3,7 +3,7 @@ use log::LevelFilter;
 use simplelog::{CombinedLogger, Config, TermLogger, WriteLogger, TerminalMode, ColorChoice};
 
 /// Available values: Off, Error, Warn, Info, Debug, Trace
-const LOG_LEVEL: LevelFilter = LevelFilter::Info;
+const LOG_LEVEL: LevelFilter = LevelFilter::Debug;
 
 /// Path to the log file.
 const LOG_FILE_PATH: &str = "d3d9_proxy_mod.log";

@@ -33,6 +33,7 @@ extern "system" fn DllMain(
     fdwReason: u32,
     _lpvReserved: *mut c_void,
 ) -> BOOL {
+    overlay_runtime::logger::init();
     use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
     if fdwReason == DLL_PROCESS_ATTACH {
         unsafe {
@@ -44,6 +45,7 @@ extern "system" fn DllMain(
             let mut dll_path = PathBuf::from(path_os_string);
 
             if !dll_path.pop() {
+                log::error!("Failed to get DLL folder");
                 let text: Vec<u16> = "Failed to get DLL folder!\0".encode_utf16().collect();
                 let caption: Vec<u16> = "Proxy Error\0".encode_utf16().collect();
                 MessageBoxW(None, PCWSTR(text.as_ptr()), PCWSTR(caption.as_ptr()), MB_OK);
@@ -60,6 +62,7 @@ extern "system" fn DllMain(
                 }
                 Err(e) => {
                     let err_msg = format!("Failed to load client_original.dll!\nCode: {}\0", e.code().0);
+                    log::error!("{}", err_msg);
                     let wide_err_msg: Vec<u16> = err_msg.encode_utf16().chain(std::iter::once(0)).collect();
                     let caption: Vec<u16> = "Proxy Error\0".encode_utf16().collect();
                     MessageBoxW(None, PCWSTR(wide_err_msg.as_ptr()), PCWSTR(caption.as_ptr()), MB_OK);
@@ -77,7 +80,6 @@ pub extern "C" fn CreateInterface(name: *const c_char, return_code: *mut i32) ->
 
     // Start offsets-based D3D9 hooking exactly as before: delayed thread + offsets.
     INIT_ONCE.call_once(|| {
-        overlay_runtime::logger::init();
         // Using the shared core + overlay callbacks
         d3d9_hook_core::start_offsets_hook_thread(
             &[0xDA5D8usize, 0x179F38usize],

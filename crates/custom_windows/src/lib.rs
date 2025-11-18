@@ -14,7 +14,7 @@ pub struct SharedState {
 
 /// Trait that every window must implement.
 #[allow(dead_code)]
-pub trait Window: std::fmt::Debug { //? todo: for debug
+pub trait Window {
     /// The name of the window, used for the title.
     fn name(&self) -> &'static str;
 
@@ -59,7 +59,7 @@ pub fn regist_windows() -> Vec<Box<dyn Window + Send>> {
 mod engine_api_demo;
 mod fogui;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct OverlayText;
 impl Window for OverlayText {
     fn name(&self) -> &'static str { "Overlay Text" }

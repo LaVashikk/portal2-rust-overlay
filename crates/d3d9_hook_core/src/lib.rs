@@ -166,7 +166,7 @@ pub fn start_offsets_hook_thread(
 
                     if !st.device_notified {
                         if let Some(cb) = st.callbacks {
-                            log::info!("Offset-hook notifying device created: {:?}, {:?}", hwnd, device);
+                            log::debug!("Offset-hook notifying device created: {:?}, {:?}", hwnd, device);
                             (cb.on_device_created)(hwnd, &device);
                         }
                         st.device_notified = true;
@@ -425,7 +425,7 @@ const SHADER_API_MODULES: &[&str] = &["shaderapidx9.dll", "shaderapivk.dll"];
 // Offsets-based device acquisition
 unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice9> { unsafe {
     for &module in SHADER_API_MODULES {
-        log::info!("Attempting to get module handle for {}...", module);
+        log::debug!("Attempting to get module handle for {}...", module);
         let mut module_cstr = Vec::with_capacity(module.len() + 1);
         module_cstr.extend_from_slice(module.as_bytes());
         module_cstr.push(0);
@@ -437,7 +437,7 @@ unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice
             }
         };
         let base_addr = shader_api.0 as usize;
-        log::info!("{} found at base: 0x{:X}", module, base_addr);
+        log::debug!("{} found at base: 0x{:X}", module, base_addr);
 
         for (idx, &offset) in offsets.iter().enumerate() {
             let device_ptr_addr = base_addr + offset;
@@ -474,17 +474,13 @@ unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice
 
             let device: IDirect3DDevice9 = std::mem::transmute(device_ptr as *mut c_void);
 
-            log::info!(
-                "Valid D3D9 device found in {} via offset #{}!",
-                module,
-                idx + 1
-            );
+            log::info!("D3D9 hook successfully initialized via offsets.");
 
             std::mem::forget(device.clone());
             return Some(device);
         }
     }
 
-    log::error!("Failed to get device from any offset in any renderer module.");
+    log::error!("Failed to initialize graphics hook. The overlay will not work.");
     None
 }}

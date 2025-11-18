@@ -104,7 +104,7 @@ impl UiManager {
             let ctx = self.input_context.as_ref().unwrap().0;
 
             if ui_demands_cursor {
-                log::debug!("GRAD INPUT FROM GAME!");
+                log::debug!("Grabbing input from game.");
                 input_stack_system.enable_input_context(ctx, true);
                 input_stack_system.set_cursor_visible(ctx, false);
                 input_stack_system.set_mouse_capture(ctx, true);
@@ -150,7 +150,7 @@ fn initialize_engine_and_app() {
     match source_sdk::Engine::initialize() {
         Ok(instance) => {
             if OVERLAY_RUNTIME.set(Mutex::new(UiManager::new(instance))).is_err() {
-                log::error!("UiManager was already initialized!");
+                log::error!("UiManager was already initialized! This is a bug.");
             }
         }
         Err(err) => {
