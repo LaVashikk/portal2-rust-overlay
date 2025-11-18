@@ -133,4 +133,19 @@ impl ConVar {
     pub fn set_value_int(&mut self, value: i32) {
         unsafe { (self.vtable().set_value_int)(self, value) };
     }
+
+    /// Resets the ConVar to its default value.
+    pub fn reset(&mut self) {
+        let default_str = self.get_default();
+
+        if let Ok(int_val) = default_str.parse::<i32>() {
+            self.set_value_int(int_val);
+        }
+
+        if let Ok(float_val) = default_str.parse::<f32>() {
+            self.set_value_float(float_val);
+        }
+
+        self.set_value_str(&default_str);
+    }
 }
