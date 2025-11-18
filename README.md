@@ -30,6 +30,9 @@ Use this framework as a foundation for a wide variety of tools:
 - **Development Tools** - Entity inspectors, playtest surveys
 - **Training Tools** - Practice modes, trajectory visualizers
 
+> [!NOTE]
+> This overlay does **not** support Portal 2: Community Edition (P2:CE). For a detailed explanation, please see the [P2:CE Support Notice](P2CE_SUPPORT.md).
+
 # ✨ Showcase
 
 ## Projects Built with this Framework
