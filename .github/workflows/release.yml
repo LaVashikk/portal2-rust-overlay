@@ -63,7 +63,6 @@ jobs:
           $ErrorActionPreference = "Stop"
           $targetArch = "i686-pc-windows-msvc"
 
-          # --- 1. Build the entire workspace once for reliability and speed ---
           Write-Host "Building entire workspace for target $targetArch..."
           cargo build --release --workspace --target $targetArch
           if ($LASTEXITCODE -ne 0) {
@@ -71,12 +70,10 @@ jobs:
           }
           Write-Host "Workspace build successful."
 
-          # --- 2. Load configuration and metadata ---
           $config = Get-Content -Path release.json -Raw | ConvertFrom-Json
           $metadata = Get-Content -Path metadata.json -Raw | ConvertFrom-Json
           $artifactPaths = @()
 
-          # --- 3. Loop through targets and intelligently package them ---
           foreach ($targetConfig in $config.targets) {
             if (-not $targetConfig.enabled) {
               Write-Host "Skipping disabled target: $($targetConfig.crate_name)"
@@ -86,13 +83,11 @@ jobs:
             $crateName = $targetConfig.crate_name
             Write-Host "Processing target: $crateName"
 
-            # --- Find the crate's metadata ---
             $packageMeta = $metadata.packages | Where-Object { $_.name -eq $crateName } | Select-Object -First 1
             if (-not $packageMeta) {
               throw "Could not find metadata for package '$crateName' in metadata.json"
             }
 
-            # --- Discover the cdylib artifact name from metadata ---
             $libTarget = $packageMeta.targets | Where-Object { $_.kind -contains 'cdylib' } | Select-Object -First 1
             if (-not $libTarget) {
               throw "Package '$crateName' does not have a 'cdylib' target in its Cargo.toml."
@@ -106,7 +101,6 @@ jobs:
               throw "Build succeeded but the discovered DLL was not found at '$dllPath'."
             }
 
-            # --- Stage files for zipping ---
             $stagingPath = "staging/$crateName"
             if (Test-Path $stagingPath) { Remove-Item $stagingPath -Recurse -Force }
             New-Item $stagingPath -ItemType Directory | Out-Null
@@ -120,7 +114,6 @@ jobs:
               Copy-Item -Path $sourcePath -Destination $destPath -Recurse -Force
             }
 
-            # --- Create Archive and Checksum ---
             $zipPath = $targetConfig.archive_name
             Compress-Archive -Path (Join-Path $stagingPath '*') -DestinationPath $zipPath -Force
             $artifactPaths += $zipPath
@@ -130,7 +123,6 @@ jobs:
             $artifactPaths += $checksumPath
           }
 
-          # --- Output artifacts list for the release step ---
           $artifacts_list = $artifactPaths -join "`n"
           "artifacts<<EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           $artifacts_list | Out-File -FilePath $env:GITHUB_OUTPUT -Append
@@ -145,10 +137,8 @@ jobs:
           $baseUrl = "https://github.com/$repo/releases/download/$tag"
           $config = Get-Content -Path release.json -Raw | ConvertFrom-Json
 
-          # --- Header ---
           $body = $config.release_notes_header + "`n`n"
 
-          # --- Downloads Table ---
           $body += "## Downloads`n`n"
           $body += "| File | Checksum |`n"
           $body += "|---|---|`n"
@@ -163,22 +153,38 @@ jobs:
           }
           $body += "`n"
 
-          # --- Changelog ---
-          $body += "## Release Notes`n`n"
-          $notes = "No release notes found for this version."
           $changelogPath = "CHANGELOG.md"
           if (Test-Path $changelogPath) {
             $version = $tag.TrimStart('v')
-            $changelogContent = Get-Content -Path $changelogPath -Raw
-            $regex = "(?sm)## \[`?$version`?\](.*?)(?=\n## \[|$)"
-            $match = [regex]::Match($changelogContent, $regex)
-            if ($match.Success) {
-              $notes = $match.Value
+            $lines = Get-Content -Path $changelogPath
+            
+            $capturing = $false
+            $capturedLines = @()
+            
+            foreach ($line in $lines) {
+              if ($line -match "^## \[$([regex]::Escape($version))\]") {
+                $capturing = $true
+                continue
+              }
+              
+              if ($capturing -and $line -match "^## \[") {
+                break
+              }
+              
+              if ($capturing) {
+                $capturedLines += $line
+              }
+            }
+            
+            if ($capturedLines.Count -gt 0) {
+              $changelogContent = ($capturedLines -join "`n").Trim()
+              if ($changelogContent) {
+                $body += "## What's Changed`n`n"
+                $body += $changelogContent + "`n"
+              }
             }
           }
-          $body += $notes
 
-          # --- Save to file ---
           $body | Out-File -FilePath "releasenotes.md" -Encoding utf8
 
       - name: Create GitHub Release
