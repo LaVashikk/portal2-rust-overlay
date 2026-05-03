@@ -19,6 +19,7 @@ mod cvar;
 pub mod input_system;
 pub mod game_events;
 pub mod engine_trace;
+pub mod debug_overlay;
 
 pub use crate::entities::Entities;
 use crate::input_system::IInputStackSystem;
@@ -28,6 +29,7 @@ pub use client::IVEngineClient;
 pub use cvar::{ICvar, CvarFlags, ConVar, ConCommandBase};
 pub use game_events::IGameEventManager2;
 pub use engine_trace::IEngineTrace;
+pub use debug_overlay::IVDebugOverlay;
 
 pub static ENGINE: OnceLock<Engine> = OnceLock::new();
 
@@ -43,6 +45,7 @@ pub struct Engine {
     game_event_manager: IGameEventManager2,
     engine_server: IVEngineServer,
     engine_trace: IEngineTrace,
+    debug_overlay: IVDebugOverlay,
     server_tools: OnceLock<IServerTools>,
 }
 
@@ -78,6 +81,10 @@ impl Engine {
 
     pub fn engine_trace(&self) -> &IEngineTrace {
         &self.engine_trace
+    }
+
+    pub fn debug_overlay(&self) -> &IVDebugOverlay {
+        &self.debug_overlay
     }
 
     pub fn server_tools(&self) -> &IServerTools {
@@ -174,6 +181,13 @@ impl Engine {
         };
         if engine_trace_this.is_null() {
             return Err("Failed to find IEngineTrace interface pointer.".to_string());
+        }
+
+        let debug_overlay_this = unsafe {
+            interfaces::find_interface::<c_void>(b"engine.dll\0", b"VDebugOverlay004\0")
+        };
+        if debug_overlay_this.is_null() {
+            return Err("Failed to find IVDebugOverlay interface pointer.".to_string());
         }
 
         // --- Get the memory ranges of the modules to scan. ---
@@ -404,6 +418,17 @@ impl Engine {
             get_collideable:    get_vfunc!(engine_trace_this, 12),
         };
 
+        let debug_overlay = IVDebugOverlay {
+            this: debug_overlay_this as *mut _,
+            add_box_overlay: get_vfunc!(debug_overlay_this, 1),
+            add_sphere_overlay: get_vfunc!(debug_overlay_this, 2),
+            add_line_overlay: get_vfunc!(debug_overlay_this, 4),
+            add_text_overlay: get_vfunc!(debug_overlay_this, 5),
+            add_screen_text_overlay: get_vfunc!(debug_overlay_this, 7),
+            screen_position: get_vfunc!(debug_overlay_this, 12),
+            clear_all_overlays: get_vfunc!(debug_overlay_this, 16),
+        };
+
         let server_tools = OnceLock::new();
         if let Some(st) = Self::initialize_server_tools() {
             let _ = server_tools.set(st);
@@ -416,6 +441,7 @@ impl Engine {
             game_event_manager,
             engine_server,
             engine_trace,
+            debug_overlay,
             server_tools,
         };
 
