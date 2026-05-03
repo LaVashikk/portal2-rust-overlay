@@ -33,10 +33,15 @@ extern "system" fn DllMain(
     fdwReason: u32,
     _lpvReserved: *mut c_void,
 ) -> BOOL {
-    overlay_runtime::logger::init();
     use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
+    use windows::Win32::System::LibraryLoader::DisableThreadLibraryCalls;
+
     if fdwReason == DLL_PROCESS_ATTACH {
+        overlay_runtime::logger::init();
+
         unsafe {
+            let _ = DisableThreadLibraryCalls(hinstDLL);
+
             // Resolve absolute path to client_original.dll sitting next to us.
             let mut path_buf: [u16; 260] = [0; 260];
             GetModuleFileNameW(Some(hinstDLL), &mut path_buf);
