@@ -38,8 +38,7 @@ pub unsafe extern "system" fn Direct3DCreate9(sdk_version: u32) -> *mut IDirect3
     type FnType = unsafe extern "system" fn(u32) -> *mut IDirect3D9;
 
     // Initialize logging and original proxy table
-    overlay_runtime::logger::init();
-    proxy::initialize();
+    initialize_once();
 
     let original_fn: FnType = unsafe { proxy::get_original_function(11) }; // ord 11 - Direct3DCreate9
     let d3d9 = unsafe { original_fn(sdk_version) };
@@ -54,12 +53,13 @@ pub unsafe extern "system" fn Direct3DCreate9(sdk_version: u32) -> *mut IDirect3
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Direct3DCreate9Ex(sdk_version: u32, pp_d3d: *mut *mut IDirect3D9Ex) -> i32 {
+    // Initialize logging and original proxy table
     initialize_once();
 
     log::debug!("game run Direct3DCreate9Ex");
 
     type FnType = unsafe extern "system" fn(u32, *mut *mut IDirect3D9Ex) -> i32;
-    let original_fn: FnType = unsafe { proxy::get_original_function(12) }; // Ordinal for Direct3DCreate9Ex
+    let original_fn: FnType = unsafe { proxy::get_original_function(12) };
     let result = unsafe { original_fn(sdk_version, pp_d3d) };
 
     if result == 0 && !pp_d3d.is_null() && !(unsafe { *pp_d3d }).is_null() {
