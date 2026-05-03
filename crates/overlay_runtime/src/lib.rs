@@ -147,7 +147,10 @@ impl UiManager {
             }
         }
 
-        // TODO: toasts
+        // Draw Toasts
+        if let Ok(mut toasts) = toasts::TOASTS.try_lock() {
+            toasts.show(ctx);
+        }
 
         self.egui_wants_keyboard = ctx.wants_keyboard_input();
         self.egui_wants_pointer = ctx.wants_pointer_input();

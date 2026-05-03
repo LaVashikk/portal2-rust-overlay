@@ -33,9 +33,10 @@ pub fn regist_windows() -> Vec<Box<dyn Window + Send>> {
 fn regist_events(engine: &Engine, _shared_state: &mut SharedState) {
     // https://developer.valvesoftware.com/wiki/Logic_eventlistener
     engine.game_event_manager().listen("server_spawn", |event| {
-        // toater.info(
-        //     format!("started. Name: {}, os: {}, hostname: {}", event.get_string("mapname", ""), event.get_string("os", ""), event.get_string("hostname", ""))
-        // );
+        toasts::info(
+            format!("started. Name: {}, os: {}, hostname: {}", event.get_string("mapname", ""), event.get_string("os", ""), event.get_string("hostname", "")),
+            4000,
+        );
     });
 
     // Example of usage!
