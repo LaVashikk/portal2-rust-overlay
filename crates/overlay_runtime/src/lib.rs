@@ -135,6 +135,8 @@ impl UiManager {
 
         // Draw Windows
         for window in self.windows.iter_mut() {
+            ctx.data_mut(|d| d.insert_temp(egui::Id::new(window.name()), window.is_open()));
+
             if window.is_open() && window.is_should_render(&self.shared_state, &self.engine_instance) {
                 window.draw(ctx, &mut self.shared_state, &self.engine_instance);
             }

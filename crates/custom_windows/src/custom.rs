@@ -22,6 +22,7 @@ pub fn regist(engine: &Engine, shared_state: &mut SharedState) -> Vec<Box<dyn Wi
 pub fn regist_windows() -> Vec<Box<dyn Window + Send>> {
     vec![
         Box::new(OverlayText::default()),
+        Box::new(top_panel::TopPanel::default()),
         Box::new(debug_win::DebugWindow::default()),
         Box::new(engine_api_demo::EngineApiDemoWindow::default()),
         Box::new(fogui::FogWindow::default()),
@@ -59,6 +60,7 @@ fn regist_hotkeys(_engine: &Engine, hotkeys_manager: &mut HotkeyManager) {
 // ---------------------- \\
 //      YOUR WINDOWS      \\
 // ---------------------- \\
+mod top_panel;
 mod debug_win;
 mod engine_api_demo;
 mod fogui;
@@ -77,14 +79,6 @@ impl Window for OverlayText {
     fn draw(&mut self, ctx: &Context, _shared_state: &mut SharedState, _engine: &Engine) {
         let screen_rect = ctx.screen_rect();
         let painter = ctx.debug_painter();
-
-        painter.text(
-            egui::pos2(screen_rect.left() + 10.0, screen_rect.bottom() - 10.0),
-            egui::Align2::LEFT_BOTTOM,
-            "IN-Game Custom Overlay",
-            egui::FontId::proportional(20.0),
-            egui::Color32::ORANGE,
-        );
 
         let text = "Focus Captured; Press F3 to toggle";
         let font_id = egui::FontId::proportional(24.0);

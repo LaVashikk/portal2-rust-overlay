@@ -26,7 +26,7 @@ pub struct EngineApiDemoWindow {
 impl Default for EngineApiDemoWindow {
     fn default() -> Self {
         Self {
-            is_open: true,
+            is_open: false,
             player_id_input: 1,
             user_id_input: 1,
             server_cmd_input: "say Hello from server!".to_string(),
