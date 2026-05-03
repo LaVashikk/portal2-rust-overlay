@@ -1,5 +1,5 @@
 use std::ffi::{c_int, c_void};
-use crate::types::{Ray_t, Trace_t, TraceFilter, Vector, ICollideable, MaskFlags};
+use crate::types::{Ray_t, Trace_t, TraceFilter, Vector, ICollideable, MaskFlags, CBaseEntity};
 
 // Opaque type for the `this` pointer.
 #[repr(C)] pub(crate) struct RawIEngineTrace { _private: [u8; 0] }
@@ -21,8 +21,8 @@ pub struct IEngineTrace {
 
 impl IEngineTrace {
     /// Returns the contents mask at a particular world-space position.
-    pub fn get_point_contents(&self, pos: &Vector, mask: i32) -> i32 {
-        unsafe { (self.get_point_contents)(self.this, pos, mask as c_int, std::ptr::null_mut()) as i32 }
+    pub fn get_point_contents(&self, pos: &Vector, mask: MaskFlags) -> i32 {
+        unsafe { (self.get_point_contents)(self.this, pos, mask.bits() as c_int, std::ptr::null_mut()) as i32 }
     }
 
     /// Traces a ray against the world and entities using a filter.
@@ -33,16 +33,16 @@ impl IEngineTrace {
     }
 
     /// Traces a ray against a specific entity.
-    pub fn clip_ray_to_entity(&self, ray: &Ray_t, mask: MaskFlags, entity: *mut c_void) -> Trace_t {
+    pub fn clip_ray_to_entity(&self, ray: &Ray_t, mask: MaskFlags, entity: &CBaseEntity) -> Trace_t {
         let mut trace = Trace_t::default();
-        unsafe { (self.clip_ray_to_entity)(self.this, ray, mask.bits() as u32, entity, &mut trace) };
+        unsafe { (self.clip_ray_to_entity)(self.this, ray, mask.bits() as u32, entity as *const _ as *mut _, &mut trace) };
         trace
     }
 
     /// Converts a handle entity to a collideable interface.
-    pub fn get_collideable(&self, entity: *mut c_void) -> Option<&mut ICollideable> {
+    pub fn get_collideable(&self, entity: &CBaseEntity) -> Option<&mut ICollideable> {
         unsafe {
-            let ptr = (self.get_collideable)(self.this, entity);
+            let ptr = (self.get_collideable)(self.this, entity as *const _ as *mut _);
             if ptr.is_null() { None } else { Some(&mut *ptr) }
         }
     }
