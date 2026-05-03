@@ -114,6 +114,15 @@ impl IServerEntity {
         }
     }
 
+    /// Returns the entity handle, which contains the entity index.
+    pub fn get_handle(&self) -> CBaseHandle {
+        unsafe {
+            let vtable = *(self as *const _ as *const *const usize);
+            let get_handle: unsafe extern "thiscall" fn(*const IServerEntity) -> CBaseHandle = std::mem::transmute(vtable.add(2).read());
+            get_handle(self)
+        }
+    }
+
     /// Returns the model index of this entity.
     pub fn get_model_index(&self) -> i32 {
         unsafe {
@@ -142,6 +151,17 @@ impl CBaseEntity {
         unsafe { &mut *(self as *mut _ as *mut IServerEntity) }
     }
 
+    /// Returns the entity index (extracted from the handle).
+    pub fn get_index(&self) -> i32 {
+        self.as_server_entity().get_handle().0 as i32 & 0xFFF
+    }
+
+    /// Wrapper for IServerTools::GetKeyValue.
+    pub fn get_key_value(&self, key: &str) -> Option<String> {
+        let tools = crate::get_engine().server_tools();
+        tools.get_key_value(self, key)
+    }
+
     /// Shortcut: Gets the network Edict directly from the entity.
     pub fn get_edict<'a>(&self) -> Option<&'a mut Edict> {
         self.as_server_entity().get_networkable()?.get_edict()
@@ -166,13 +186,8 @@ impl CBaseEntity {
     //
 
     /// Retrieves the networkable class name of the entity.
-    /// Returns an empty string if the entity is not networkable.
     pub fn get_classname(&self) -> String {
-        if let Some(net) = self.get_networkable() {
-            net.get_class_name()
-        } else {
-            String::new()
-        }
+        self.get_class_name()
     }
 
     /// Reads the current health of the entity via the engine's DataMap.
