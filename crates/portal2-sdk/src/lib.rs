@@ -18,6 +18,7 @@ mod client;
 mod cvar;
 pub mod input_system;
 pub mod game_events;
+pub mod engine_trace;
 
 pub use crate::entities::Entities;
 use crate::input_system::IInputStackSystem;
@@ -26,6 +27,7 @@ use crate::server_tools::IServerTools;
 pub use client::IVEngineClient;
 pub use cvar::{ICvar, CvarFlags, ConVar, ConCommandBase};
 pub use game_events::IGameEventManager2;
+pub use engine_trace::IEngineTrace;
 
 pub static ENGINE: OnceLock<Engine> = OnceLock::new();
 
@@ -40,6 +42,7 @@ pub struct Engine {
     icvar: ICvar,
     game_event_manager: IGameEventManager2,
     engine_server: IVEngineServer,
+    engine_trace: IEngineTrace,
     server_tools: OnceLock<IServerTools>,
 }
 
@@ -71,6 +74,10 @@ impl Engine {
 
     pub fn engine_server(&self) -> &IVEngineServer {
         &self.engine_server
+    }
+
+    pub fn engine_trace(&self) -> &IEngineTrace {
+        &self.engine_trace
     }
 
     pub fn server_tools(&self) -> &IServerTools {
@@ -160,6 +167,13 @@ impl Engine {
         };
         if engine_server_this.is_null() {
             return Err("Failed to find IVEngineServer interface pointer.".to_string());
+        }
+
+        let engine_trace_this = unsafe {
+            interfaces::find_interface::<c_void>(b"engine.dll\0", b"EngineTraceServer004\0")
+        };
+        if engine_trace_this.is_null() {
+            return Err("Failed to find IEngineTrace interface pointer.".to_string());
         }
 
         // --- Get the memory ranges of the modules to scan. ---
@@ -382,6 +396,13 @@ impl Engine {
             get_client_cross_play_platform: get_vfunc!(engine_server_this, 143),
         };
 
+        let engine_trace = IEngineTrace {
+            this: engine_trace_this as *mut _,
+            get_point_contents: get_vfunc!(engine_trace_this, 0),
+            clip_ray_to_entity: get_vfunc!(engine_trace_this, 3),
+            trace_ray:          get_vfunc!(engine_trace_this, 5),
+            get_collideable:    get_vfunc!(engine_trace_this, 12),
+        };
 
         let server_tools = OnceLock::new();
         if let Some(st) = Self::initialize_server_tools() {
@@ -394,6 +415,7 @@ impl Engine {
             icvar,
             game_event_manager,
             engine_server,
+            engine_trace,
             server_tools,
         };
 
