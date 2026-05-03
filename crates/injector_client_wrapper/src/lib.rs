@@ -88,7 +88,7 @@ pub extern "C" fn CreateInterface(name: *const c_char, return_code: *mut i32) ->
         // Using the shared core + overlay callbacks
         d3d9_hook_core::start_offsets_hook_thread(
             &[0xDA5D8usize, 0x179F38usize],
-            5000, // 5 seconds delay same as before
+            1000,
             &overlay_runtime::CALLBACKS,
         );
     });
