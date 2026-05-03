@@ -176,7 +176,8 @@ impl CBaseEntity {
     }
 
     /// Reads the current health of the entity via the engine's DataMap.
-    pub fn get_health(&self, tools: &IServerTools) -> i32 {
+    pub fn get_health(&self) -> i32 {
+        let tools = crate::get_engine().server_tools();
         if let Some(val) = tools.get_key_value(self, "health") {
             val.parse().unwrap_or(0)
         } else {
@@ -185,7 +186,8 @@ impl CBaseEntity {
     }
 
     /// Returns the current absolute world coordinates (origin) of the entity.
-    pub fn get_origin(&self, tools: &IServerTools) -> Vector {
+    pub fn get_origin(&self) -> Vector {
+        let tools = crate::get_engine().server_tools();
         if let Some(val) = tools.get_key_value(self, "origin") {
             // The string format is typically: "X Y Z"
             let parts: Vec<&str> = val.split_whitespace().collect();
@@ -201,7 +203,8 @@ impl CBaseEntity {
     }
 
     /// Returns the rotation angles of the entity (Pitch, Yaw, Roll).
-    pub fn get_angles(&self, tools: &IServerTools) -> QAngle {
+    pub fn get_angles(&self) -> QAngle {
+        let tools = crate::get_engine().server_tools();
         if let Some(val) = tools.get_key_value(self, "angles") {
             let parts: Vec<&str> = val.split_whitespace().collect();
             if parts.len() >= 3 {
@@ -216,12 +219,14 @@ impl CBaseEntity {
     }
 
     /// Returns the target name ("targetname") of the entity.
-    pub fn get_name(&self, tools: &IServerTools) -> String {
+    pub fn get_name(&self) -> String {
+        let tools = crate::get_engine().server_tools();
         tools.get_key_value(self, "targetname").unwrap_or_default()
     }
 
     /// Removes the entity from the world using IServerTools.
-    pub fn destroy(&self, tools: &IServerTools) {
+    pub fn destroy(&self) {
+        let tools = crate::get_engine().server_tools();
         if let Some(hammer_id_str) = tools.get_key_value(self, "hammerid") {
             if let Ok(hammer_id) = hammer_id_str.parse::<i32>() {
                 tools.remove_entity(hammer_id);
@@ -230,12 +235,14 @@ impl CBaseEntity {
     }
 
     /// Sets a string key-value field for the entity.
-    pub fn set_key_value(&mut self, tools: &IServerTools, key: &str, value: &str) -> bool {
+    pub fn set_key_value(&mut self, key: &str, value: &str) -> bool {
+        let tools = crate::get_engine().server_tools();
         tools.set_key_value_str(self, key, value)
     }
 
     /// Sets an integer key-value field for the entity.
-    pub fn set_key_value_int(&mut self, tools: &IServerTools, key: &str, value: i32) -> bool {
+    pub fn set_key_value_int(&mut self, key: &str, value: i32) -> bool {
+        let tools = crate::get_engine().server_tools();
         tools.set_key_value_flt(self, key, value as f32)
     }
 }

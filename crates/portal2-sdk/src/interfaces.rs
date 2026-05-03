@@ -45,7 +45,7 @@ pub unsafe fn find_interface<T>(
         Ok(handle) if !handle.is_invalid() => handle,
         _ => {
             // This is a critical error. The module should already be loaded by the game.
-            log::error!("Failed to get module handle for: {}\0", String::from_utf8_lossy(module_name));
+            log::warn!("Failed to get module handle for: {}\0", String::from_utf8_lossy(module_name));
             return std::ptr::null_mut();
         }
     };

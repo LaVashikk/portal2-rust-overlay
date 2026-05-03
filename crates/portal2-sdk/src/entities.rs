@@ -49,7 +49,7 @@ impl<'a> Entities<'a> {
         };
 
         while let Some(ent) = current {
-            if ent.get_name(self.tools) == targetname {
+            if ent.get_name() == targetname {
                 return Some(unsafe { &mut *(ent as *mut CBaseEntity) });
             }
             current = self.tools.next_entity(ent);
@@ -65,7 +65,7 @@ impl<'a> Entities<'a> {
         };
 
         while let Some(ent) = current {
-            let origin = ent.get_origin(self.tools);
+            let origin = ent.get_origin();
             if origin.distance(center) <= radius {
                 return Some(unsafe { &mut *(ent as *mut CBaseEntity) });
             }

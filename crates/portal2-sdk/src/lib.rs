@@ -2,8 +2,9 @@
 //!
 //! This crate provides a safe and ergonomic API for interacting with the Source engine's C++ interfaces.
 //! It uses a signature-based approach to find the interfaces and their methods in memory.
+use std::sync::OnceLock;
 use std::{ffi::c_void, slice};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 
 mod signatures;
 pub mod types;
@@ -26,6 +27,12 @@ pub use client::IVEngineClient;
 pub use cvar::{ICvar, CvarFlags, ConVar, ConCommandBase};
 pub use game_events::IGameEventManager2;
 
+pub static ENGINE: OnceLock<Engine> = OnceLock::new();
+
+pub fn get_engine() -> &'static Engine {
+    ENGINE.get().expect("Engine not initialized!")
+}
+
 /// A struct that holds pointers to all the game engine interfaces we need.
 pub struct Engine {
     client: IVEngineClient,
@@ -33,10 +40,10 @@ pub struct Engine {
     icvar: ICvar,
     game_event_manager: IGameEventManager2,
     engine_server: IVEngineServer,
-    server_tools: IServerTools,
+    server_tools: OnceLock<IServerTools>,
 }
 
-/// # Safety
+/// SAFETY:
 /// This implementation is safe under the assumption that this struct is written to only
 /// ONCE during initialization from a single thread, and then only read from.
 unsafe impl Send for Engine {}
@@ -67,7 +74,19 @@ impl Engine {
     }
 
     pub fn server_tools(&self) -> &IServerTools {
-        &self.server_tools
+        if let Some(tools) = self.server_tools.get() {
+            return tools;
+        }
+
+        // Okay, lets try init this now...
+        if let Some(tools) = Self::initialize_server_tools() {
+            let _ = self.server_tools.set(tools);
+            if let Some(tools) = self.server_tools.get() {
+                return tools;
+            }
+        }
+
+        panic!("Failed to initialize IServerTools interface. Possibly called too early.")
     }
 
     pub fn entities(&self) -> Entities<'_> {
@@ -75,11 +94,32 @@ impl Engine {
     }
 }
 
+// A helper macro to reduce boilerplate when finding functions.
+macro_rules! find_fn {
+    ($mem_slice:expr, $base_addr:expr, $pattern:expr, $mask:expr, $fn_name:literal) => {
+        match memory::find_pattern($mem_slice, $pattern, $mask) {
+            Some(offset) => unsafe { std::mem::transmute($base_addr.add(offset)) },
+            None => {
+                return Err(format!("{} signature not found!", $fn_name));
+            }
+        }
+    };
+}
+macro_rules! get_vfunc { // for unique cases
+    ($this:expr, $idx:expr) => {
+        unsafe {
+            let vtable = *($this as *const *const usize);
+            let func_ptr = vtable.add($idx).read();
+            std::mem::transmute(func_ptr)
+        }
+    };
+}
+
 
 /// Initializes all engine interfaces by finding them in memory and resolving function pointers.
 /// This is the core of the signature-based approach. It must be called once before `get()`.
 impl Engine {
-    pub fn initialize() -> Result<Engine, String> {
+    pub fn initialize() -> Result<&'static Engine, String> {
         static INITED: AtomicBool = AtomicBool::new(false);
         if INITED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
             return Err("Re-initialization is prohibited!".to_string());
@@ -122,13 +162,6 @@ impl Engine {
             return Err("Failed to find IVEngineServer interface pointer.".to_string());
         }
 
-        let server_tools_this = unsafe {
-            interfaces::find_interface::<c_void>(b"server.dll\0", b"VSERVERTOOLS001\0")
-        };
-        if server_tools_this.is_null() {
-            return Err("Failed to find IServerTools interface pointer.".to_string());
-        }
-
         // --- Get the memory ranges of the modules to scan. ---
         let engine_dll = unsafe { memory::get_module_memory_range(b"engine.dll\0") };
         let inputsystem_dll = unsafe { memory::get_module_memory_range(b"inputsystem.dll\0") };
@@ -147,27 +180,6 @@ impl Engine {
         let vstdlib_mem = unsafe { slice::from_raw_parts(vstdlib_base, vstdlib_size) };
 
         // --- Find function addresses using signatures and construct interface structs. ---
-
-        // A helper macro to reduce boilerplate when finding functions.
-        macro_rules! find_fn {
-            ($mem_slice:expr, $base_addr:expr, $pattern:expr, $mask:expr, $fn_name:literal) => {
-                match memory::find_pattern($mem_slice, $pattern, $mask) {
-                    Some(offset) => unsafe { std::mem::transmute($base_addr.add(offset)) },
-                    None => {
-                        return Err(format!("{} signature not found!", $fn_name));
-                    }
-                }
-            };
-        }
-        macro_rules! get_vfunc { // for unique cases
-            ($this:expr, $idx:expr) => {
-                unsafe {
-                    let vtable = *($this as *const *const usize);
-                    let func_ptr = vtable.add($idx).read();
-                    std::mem::transmute(func_ptr)
-                }
-            };
-        }
 
         use signatures::iv_engine_client::*;
         let client = IVEngineClient {
@@ -371,6 +383,31 @@ impl Engine {
         };
 
 
+        let server_tools = OnceLock::new();
+        if let Some(st) = Self::initialize_server_tools() {
+            let _ = server_tools.set(st);
+        }
+
+        let engine = Engine {
+            client,
+            input_stack_system,
+            icvar,
+            game_event_manager,
+            engine_server,
+            server_tools,
+        };
+
+        ENGINE.set(engine).map_err(|_| "Engine already initialized!")?;
+        Ok(&ENGINE.get().unwrap())
+    }
+
+    fn initialize_server_tools() -> Option<IServerTools> {
+        let server_tools_this = unsafe {
+            interfaces::find_interface::<c_void>(b"server.dll\0", b"VSERVERTOOLS001\0")
+        };
+        if server_tools_this.is_null() {
+            return None;
+        }
         let server_tools = IServerTools {
             this: server_tools_this as *mut _,
             get_iserver_entity: get_vfunc!(server_tools_this, 1),
@@ -396,14 +433,6 @@ impl Engine {
             remove_entity: get_vfunc!(server_tools_this, 21),
         };
 
-
-        Ok(Engine {
-            client,
-            input_stack_system,
-            icvar,
-            game_event_manager,
-            engine_server,
-            server_tools,
-        })
+        Some(server_tools)
     }
 }
