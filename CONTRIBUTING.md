@@ -1,4 +1,3 @@
-
 # Contributing & Development Guide
 
 First off, thank you for considering contributing! We welcome any improvements, whether it's fixing a bug, adding a new feature to the template, or simply making a suggestion. This guide is designed to get you started quickly.
@@ -9,6 +8,7 @@ First off, thank you for considering contributing! We welcome any improvements, 
 - [Project Structure](#project-structure)
 - [Development Workflow](#-development-workflow)
   - [Adding a New Window](#adding-a-new-window)
+  - [Events, Hotkeys & Global State](#events-hotkeys--global-state)
   - [Advanced Examples](#advanced-examples)
 - [Building & Testing](#-building--testing)
 - [Keeping Your Fork Up-to-Date](#-keeping-your-fork-up-to-date)
@@ -16,7 +16,7 @@ First off, thank you for considering contributing! We welcome any improvements, 
 - [Code & Commit Guidelines](#-code--commit-guidelines)
 - [FAQ](#frequently-asked-questions)
 
-##  Prerequisites & Setup
+## Prerequisites & Setup
 
 Before you begin, make sure you have the following installed:
 -   **Rust Toolchain**: Including `rustup`, `cargo`, and `rustc`.
@@ -50,12 +50,13 @@ portal2-rust-overlay/
 │   ├── injector_server_plugin/   # Server plugin entry point  
 │   ├── injector_client_wrapper/  # Client.dll wrapper
 │   ├── hook_core/                # Core D3D9 hooking logic
+│   ├── overlay_types/            # Shared types, events, and input abstractions
 │   ├── overlay_runtime/          # UI management & rendering
 │   ├── egui_backend/             # Egui-D3D9 integration
-│   ├── portal2_sdk/               # Source Engine FFI bindings
+│   ├── portal2_sdk/              # Source Engine FFI bindings
 │   └── custom_windows/           # ← YOUR UI CODE GOES HERE
-├── docs/                          # Additional documentation
-├── Cargo.toml                     # Workspace configuration
+├── docs/                         # Additional documentation
+├── Cargo.toml                    # Workspace configuration
 └── README.md
 ```
 
@@ -68,10 +69,11 @@ portal2-rust-overlay/
 
 #### Step 1: Create the Window File
 
-Create a new file, for example `crates/custom_windows/src/my_window.rs`:
+Create a new file in the custom directory, for example `crates/custom_windows/src/custom/my_window.rs`:
 
 ```rust
 use crate::{Window, SharedState};
+use overlay_types::events::OverlayEvent;
 use portal2_sdk::Engine;
 use egui::Context;
 
@@ -84,31 +86,32 @@ pub struct MyWindow {
 }
 
 impl Window for MyWindow {
-    fn name(&self) -> &'static str { 
-        "My Window" 
+    fn name(&self) -> &'static str { "My Window" }
+    fn set_open(&mut self, open: bool) { self.is_open = open; }
+    fn is_open(&self) -> bool { self.is_open }
+
+    // Optional: React to global overlay events
+    fn on_event(&mut self, event: &OverlayEvent, _shared_state: &mut SharedState) {
+        if let OverlayEvent::Command(cmd) = event {
+            if cmd == "my_custom_action" {
+                self.counter += 1;
+            }
+        }
     }
 
-    fn is_open(&self) -> bool { 
-        self.is_open 
-    }
-
-    fn toggle(&mut self) { 
-        self.is_open = !self.is_open; 
+    // Optional: Only draw when overlay is focused
+    fn is_should_render(&self, shared_state: &SharedState, _engine: &portal2_sdk::Engine) -> bool {
+        shared_state.is_overlay_focused
     }
 
     fn draw(&mut self, ctx: &Context, shared: &mut SharedState, engine: &Engine) {
-        // Only draw when overlay is focused (optional)
-        if !shared.is_overlay_focused { 
-            return; 
-        }
-
         egui::Window::new(self.name())
             .open(&mut self.is_open)
             .resizable(true)
             .show(ctx, |ui| {
                 ui.heading("My Custom Window");
                 
-                // Example: Button with action
+                // Example: Button with game action
                 if ui.button("Click Me").clicked() {
                     self.counter += 1;
                     // Execute game command
@@ -117,7 +120,7 @@ impl Window for MyWindow {
                     );
                 }
                 
-                // Example: Text input to run commands
+                // Example: Text input to run console commands
                 ui.horizontal(|ui| {
                     ui.label("Command:");
                     ui.text_edit_singleline(&mut self.text_buffer);
@@ -130,34 +133,35 @@ impl Window for MyWindow {
                 if let Some(fps_max) = engine.cvar_system().find_var("fps_max") {
                     ui.label(format!("FPS Limit: {}", fps_max.get_int()));
                 }
+                // Example: Triggering the global event bus!
+                if ui.button("Trigger Custom Event").clicked() {
+                    overlay_types::events::push_event(OverlayEvent::Command("my_custom_action".to_string()));
+                }
             });
-    }
-    
-    // Optional: Handle raw input for hotkeys, even when the overlay is not focused
-    fn on_raw_input(&mut self, umsg: u32, wparam: u16) -> bool {
-        use windows::Win32::UI::WindowsAndMessaging::WM_KEYUP;
-        use windows::Win32::UI::Input::KeyboardAndMouse::VK_F5;
-        
-        if umsg == WM_KEYUP && wparam == VK_F5.0 {
-            self.toggle();
-        }
-        true // Return true to allow the game to also process this input
     }
 }
 ```
 
-#### Step 2: Register Window
+#### Step 2: Register the Window & Hotkeys
 
-In `crates/custom_windows/src/lib.rs`:
+Open `crates/custom_windows/src/custom.rs`. This file is the central registration hub for all UI components, engine events, and hotkeys.
 
 ```rust
-mod my_window; // Add module declaration
+mod my_window; // 1. Add module declaration
 
 pub fn regist_windows() -> Vec<Box<dyn Window + Send>> {
     vec![
         // ... existing windows
-        Box::new(my_window::MyWindow::default()), // Add an instance of your window struct
+        Box::new(my_window::MyWindow::default()), // 2. Add your window instance here
     ]
+}
+
+fn regist_hotkeys(_engine: &Engine, hotkeys_manager: &mut HotkeyManager) {
+    // ... existing hotkeys
+
+    // 3. Bind a key to toggle your new window!
+    // The `false` means this input is consumed and won't be passed to the game.
+    hotkeys_manager.bind(KeyCode::F5, OverlayEvent::ToggleWindow("My Window"), false);
 }
 ```
 
@@ -176,6 +180,21 @@ cargo build-plugin
 cargo build-client
 ```
 The output DLL will be in `target/i686-pc-windows-msvc/release/`.
+
+### Events, Hotkeys & Global State
+
+The framework provides powerful cross-communication abstractions via the `overlay_types` crate.
+
+**Global Shared State**
+You can add your own custom mod state to `SharedState` in `crates/custom_windows/src/lib.rs`. Since this struct is passed mutably to all window `draw` and `on_event` calls, it acts as a perfect single source of truth for your data!
+
+**The Event Bus**
+To decouple windows and logic, you can send events asynchronously via `events::push_event(OverlayEvent)`. 
+* Built-in events include: `ToggleOverlay`, `ToggleWindow("Name")`, `SetWindowState("Name", bool)`, `EngineCommand`, etc.
+* Custom events can be dispatched via `OverlayEvent::Command(String)`.
+
+**Hotkeys**
+Instead of manually intercepting low-level WinAPI messages, you can map high-level keys to `OverlayEvent`s inside the `regist_hotkeys` function in `custom.rs`. The framework automatically figures out if it should intercept the key press or pass it down to the Source engine.
 
 ### Advanced Examples
 

@@ -149,9 +149,10 @@ Ready to create your own tools? This project is a template designed for extensio
 crates/
 ├── injector_*/          # Entry points (don't modify)
 ├── hook_core/           # D3D9 hooking core
+├── overlay_types/       # Shared types, event system, and hotkey abstractions
 ├── overlay_runtime/     # Manages UI state, input, and rendering loop
 ├── egui_backend/        # The egui rendering backend for D3D9
-├── portal2_sdk/          # Safe bindings to Source Engine functions
+├── portal2_sdk/         # Safe bindings to Source Engine functions
 └── custom_windows/      # **YOUR CODE GOES HERE! 🎯**
 ```
 
