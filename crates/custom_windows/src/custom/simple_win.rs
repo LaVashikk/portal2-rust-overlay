@@ -1,12 +1,12 @@
 use crate::{SharedState, Window};
 
 #[derive(Debug, Default)]
-pub struct DebugWindow {
+pub struct SimpleWindow {
     pub is_open: bool,
 }
 
-impl Window for DebugWindow {
-    fn name(&self) -> &'static str { "Debug Window" }
+impl Window for SimpleWindow {
+    fn name(&self) -> &'static str { "Simple Window" }
     fn set_open(&mut self, open: bool) { self.is_open = open; }
     fn is_open(&self) -> bool { self.is_open }
 
@@ -16,10 +16,10 @@ impl Window for DebugWindow {
             .resizable(true)
             .hscroll(true)
             .vscroll(true)
-            .default_height(38.)
             .show(ctx, |ui| {
                 ui.heading("CVar Inspector");
                 ui.separator();
+                ui.label("I have a keybind set to Q (to open the window). Try pressing it!");
 
                 let cvar_system = engine.cvar_system();
                 match cvar_system.find_var("sv_cheats") {

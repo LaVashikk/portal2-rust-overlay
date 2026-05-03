@@ -88,11 +88,15 @@ impl UiManager {
                     if let Some(win) = self.windows.iter_mut().find(|w| w.name() == *name) {
                         let state = win.is_open();
                         win.set_open(!state);
+                    } else {
+                        log::warn!("Unknown window for ToggleWindow event: {}", name);
                     }
                 }
                 events::OverlayEvent::SetWindowState(name, open) => {
                     if let Some(win) = self.windows.iter_mut().find(|w| w.name() == *name) {
                         win.set_open(*open);
+                    } else {
+                        log::warn!("Unknown window for SetWindowState event: {}", name);
                     }
                 },
                 events::OverlayEvent::CloseAllWindows => {
@@ -118,6 +122,7 @@ impl UiManager {
             }
         }
     }
+
 
     pub(crate) fn draw_ui(&mut self, ctx: &egui::Context) {
         // Apply zoom factor to text styles

@@ -1,5 +1,4 @@
 use std::ffi::{CStr, c_char, c_int};
-use crate::server_tools::IServerTools;
 use super::{Vector, QAngle, SendTable};
 
 /// A unique identifier for a networkable entity. It combines an entity index

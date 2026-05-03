@@ -37,14 +37,12 @@ fn regist_events(engine: &Engine, _shared_state: &mut SharedState) {
         //     format!("started. Name: {}, os: {}, hostname: {}", event.get_string("mapname", ""), event.get_string("os", ""), event.get_string("hostname", ""))
         // );
     });
-    engine.game_event_manager().listen("server_shutdown", |event| {
-        log::warn!("stopped: {}", event.get_string("reason", ""));
-    });
 
+    // Example of usage!
     engine.game_event_manager().listen("server_cvar", |event| {
-        if event.get_string("cvarname", "") == "developer" {
+        if event.get_string("cvarname", "") == "sv_cheats" {
             let is_enabled = event.get_int("cvarvalue", 0) == 1;
-            events::push_event(OverlayEvent::SetWindowState("Debug Window", is_enabled))
+            events::push_event(OverlayEvent::SetWindowState("Simple Window", is_enabled))
         }
     });
 }

@@ -4,7 +4,7 @@
 //! It uses a signature-based approach to find the interfaces and their methods in memory.
 use std::sync::OnceLock;
 use std::{ffi::c_void, slice};
-use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 mod signatures;
 pub mod types;

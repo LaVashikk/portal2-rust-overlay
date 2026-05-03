@@ -3,7 +3,7 @@ pub mod masks;
 pub use masks::*;
 
 use std::ffi::{c_char, c_int, c_void};
-use super::{Vector, QAngle, CBaseEntity};
+use super::{Vector, CBaseEntity};
 
 #[repr(C, align(16))]
 #[derive(Debug, Default, Clone, Copy)]
@@ -101,7 +101,7 @@ impl Default for Trace_t {
 }
 
 #[repr(i32)]
-pub enum TraceType_t {
+pub enum TraceTypeT {
     Everything = 0,
     WorldOnly,
     EntitiesOnly,
@@ -112,7 +112,7 @@ pub enum TraceType_t {
 #[repr(C)]
 pub struct ITraceFilterVTable {
     pub should_hit_entity: unsafe extern "thiscall" fn(this: *mut c_void, entity: *mut c_void, mask: c_int) -> bool,
-    pub get_trace_type: unsafe extern "thiscall" fn(this: *mut c_void) -> TraceType_t,
+    pub get_trace_type: unsafe extern "thiscall" fn(this: *mut c_void) -> TraceTypeT,
 }
 
 pub struct TraceFilter {
@@ -126,12 +126,12 @@ static TRACE_FILTER_VTABLE: ITraceFilterVTable = ITraceFilterVTable {
 };
 
 unsafe extern "thiscall" fn trace_filter_should_hit_entity(_this: *mut c_void, entity: *mut c_void, _mask: c_int) -> bool {
-    let filter = &*(_this as *const TraceFilter);
+    let filter = unsafe { &*(_this as *const TraceFilter) };
     entity != filter.skip
 }
 
-unsafe extern "thiscall" fn trace_filter_get_trace_type(_this: *mut c_void) -> TraceType_t {
-    TraceType_t::Everything
+unsafe extern "thiscall" fn trace_filter_get_trace_type(_this: *mut c_void) -> TraceTypeT {
+    TraceTypeT::Everything
 }
 
 impl TraceFilter {

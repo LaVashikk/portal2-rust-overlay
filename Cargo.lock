@@ -135,6 +135,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui-notify"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ab6bab52b2ef6d7ba32697da10a2ae7d3e8a245f9da42f62826af3afcd8fdc3"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "egui_backend"
 version = "0.4.0"
 dependencies = [
@@ -308,6 +317,7 @@ name = "overlay_types"
 version = "0.1.0"
 dependencies = [
  "egui",
+ "egui-notify",
 ]
 
 [[package]]

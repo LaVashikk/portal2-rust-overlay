@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_int, c_void, CString};
+use std::ffi::{c_char, c_int, CString};
 use crate::types::{Vector, QAngle};
 
 // Opaque type for the `this` pointer.
