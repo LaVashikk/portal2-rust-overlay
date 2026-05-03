@@ -19,15 +19,9 @@ const FOG_COLOR_SKYBOX: &str = "fog_colorskybox";
 const R_FARZ: &str = "r_farz";
 // -------------------------------------------------- \\
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct FogWindow {
     is_open: bool,
-}
-
-impl Default for FogWindow {
-    fn default() -> Self {
-        Self { is_open: true }
-    }
 }
 
 impl Window for FogWindow {
@@ -55,6 +49,45 @@ impl Window for FogWindow {
                 // --- Main Switches ---
                 ui.label( RichText::new("Requires sv_cheats 1").color(color) );
                 draw_cvar_checkbox(engine, ui, FOG_OVERRIDE, "Fog Override");
+
+                // Copy values from the active map fog controller
+                if ui.button("Copy from env_fog_controller").clicked() {
+                    let entities = engine.entities();
+
+                    if let Some(fog_ent) = entities.find_by_classname(None, "env_fog_controller") {
+                        let st = engine.server_tools();
+
+                        // Extract keyvalues and apply them directly to the corresponding CVars
+                        if let Some(enable) = st.get_key_value(fog_ent, "fogenable") {
+                            client.execute_client_cmd_unrestricted(&format!("{} {}", FOG_ENABLE, enable));
+                        }
+                        if let Some(start) = st.get_key_value(fog_ent, "fogstart") {
+                            client.execute_client_cmd_unrestricted(&format!("{} {}", FOG_START, start));
+                        }
+                        if let Some(end) = st.get_key_value(fog_ent, "fogend") {
+                            client.execute_client_cmd_unrestricted(&format!("{} {}", FOG_END, end));
+                        }
+                        if let Some(color_raw) = st.get_key_value(fog_ent, "fogcolor") {
+                            // Source Engine bug: GetKeyValue reads 16 bytes (4 ints) instead of 4 bytes.
+                            // The first integer is our actual R G B A color32 struct.
+                            if let Some(first_num_str) = color_raw.split_whitespace().next() {
+                                if let Ok(packed_color) = first_num_str.parse::<u32>() {
+                                    let r = packed_color & 0xFF;
+                                    let g = (packed_color >> 8) & 0xFF;
+                                    let b = (packed_color >> 16) & 0xFF;
+
+                                    dbg!(r, g, b);
+                                    client.execute_client_cmd_unrestricted(&format!("{} \"{} {} {}\"", FOG_COLOR, r, g, b));
+                                }
+                            }
+                        }
+                        if let Some(farz) = st.get_key_value(fog_ent, "farz") {
+                            dbg!(&farz);
+                            client.execute_client_cmd_unrestricted(&format!("{} {}", R_FARZ, farz));
+                        }
+                    }
+                }
+
                 ui.separator();
 
                 // --- Primary Fog Section ---
