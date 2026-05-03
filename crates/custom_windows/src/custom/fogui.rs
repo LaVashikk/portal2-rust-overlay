@@ -32,7 +32,7 @@ impl Default for FogWindow {
 
 impl Window for FogWindow {
     fn name(&self) -> &'static str { "Better Fog GUI" }
-    fn toggle(&mut self) { self.is_open = !self.is_open; }
+    fn set_open(&mut self, open: bool) { self.is_open = open; }
     fn is_open(&self) -> bool { self.is_open }
     fn is_should_render(&self, shared_state: &SharedState, _engine: &Engine) -> bool { shared_state.is_overlay_focused }
 

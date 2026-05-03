@@ -9,3 +9,4 @@ egui.workspace = true
 log.workspace = true
 windows.workspace = true
 portal2-sdk.workspace = true
+overlay_types.workspace = true
