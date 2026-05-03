@@ -3,16 +3,22 @@
 //! This crate is responsible for defining the UI of the overlay. It contains the `Window` trait,
 //! which every window must implement, and the `regist_windows` function, which assembles and
 //! returns a collection of all active UI windows.
-use egui::Context;
+use overlay_types::{HotkeyManager, events::OverlayEvent};
 use portal2_sdk::Engine;
 
 /// Base font scale factor
 pub const BASE_TEXT_SCALE: f32 = 1.25;
 
-/// Shared state accessible to all windows.
-#[derive(Debug, Default, Clone)]
+/// --- THE SINGLE SOURCE OF TRUTH ---
+/// You can add all your custom mod fields here!
+#[derive(Default, Clone)]
 pub struct SharedState {
     pub is_overlay_focused: bool,
+    pub hotkeys: HotkeyManager,
+    // pub toasts: Toaster,        // TODO: should be GLOBAL!
+
+    // Add your custom game-specific fields below:
+    // pub something_enabled: bool,
 }
 
 /// Trait that every window must implement.
@@ -22,10 +28,13 @@ pub trait Window {
     fn name(&self) -> &'static str;
 
     /// Shows or hides the window.
-    fn toggle(&mut self);
+    fn set_open(&mut self, _open: bool);
 
     /// Returns whether the window is open.
     fn is_open(&self) -> bool;
+
+    /// Triggered whenever an event (hotkey, game event, command) is fired.
+    fn on_event(&mut self, _event: &OverlayEvent, _shared_state: &mut SharedState) {}
 
     /// Determines if the window should be rendered in the current frame.
     /// This is checked before calling `draw()`.
@@ -33,85 +42,7 @@ pub trait Window {
 
     /// The drawing logic of the window.
     fn draw(&mut self, ctx: &egui::Context, shared_state: &mut SharedState, engine: &Engine);
-
-    /// Raw input signal processing, optional.
-    /// # Returns
-    /// * `true` - if the input should be passed to the game.
-    /// * `false` - if the input should be "eaten" (blocked).
-    fn on_raw_input(&mut self, _umsg: u32, _wparam: u16) -> bool { true }
 }
 
-
-/// Assembles and returns a collection of all active UI windows.
-///
-/// This function is the designated discovery point for UI components. The core
-/// application calls it to populate the `UiManager`'s window list.
-pub fn regist_windows(engine: &Engine) -> Vec<Box<dyn Window + Send>> {
-   regist_events(engine);
-
-    vec![
-        Box::new(OverlayText::default()),
-        Box::new(engine_api_demo::EngineApiDemoWindow::default()),
-        Box::new(fogui::FogWindow::default()),
-    ]
-}
-
-fn regist_events(engine: &Engine) {
-    // https://developer.valvesoftware.com/wiki/Logic_eventlistener
-    engine.game_event_manager().listen("server_spawn", |event| {
-        log::warn!("started. Name: {}, os: {}, hostname: {}", event.get_string("mapname", ""), event.get_string("os", ""), event.get_string("hostname", ""));
-    });
-    engine.game_event_manager().listen("server_shutdown", |event| {
-        log::warn!("stopped: {}", event.get_string("reason", ""));
-    });
-}
-
-
-// ---------------------- \\
-//      YOUR WINDOWS      \\
-// ---------------------- \\
-// mod debug_win;
-mod engine_api_demo;
-mod fogui;
-
-#[derive(Default)]
-pub struct OverlayText;
-impl Window for OverlayText {
-    fn name(&self) -> &'static str { "Overlay Text" }
-    fn toggle(&mut self) {}
-    fn is_open(&self) -> bool { true }
-
-    fn draw(&mut self, ctx: &Context, shared_state: &mut SharedState, _engine: &Engine) {
-        let screen_rect = ctx.screen_rect();
-        let painter = ctx.debug_painter();
-
-        painter.text(
-            egui::pos2(screen_rect.left() + 10.0, screen_rect.bottom() - 10.0),
-            egui::Align2::LEFT_BOTTOM,
-            "IN-Game Custom Overlay",
-            egui::FontId::proportional(20.0),
-            egui::Color32::ORANGE,
-        );
-
-        if shared_state.is_overlay_focused {
-            let text = "Focus Captured; Press F3 to toggle";
-            let font_id = egui::FontId::proportional(24.0);
-            let text_color = egui::Color32::WHITE;
-            let shadow_color = egui::Color32::BLACK;
-            let pos = egui::pos2(screen_rect.center().x, screen_rect.bottom() - 50.0);
-            let anchor = egui::Align2::CENTER_BOTTOM;
-
-            // Shadow
-            painter.text(
-                pos + egui::vec2(2.0, 2.0),
-                anchor,
-                text,
-                font_id.clone(),
-                shadow_color,
-            );
-
-            // Foreground text
-            painter.text(pos, anchor, text, font_id, text_color);
-        }
-    }
-}
+pub mod custom;
+pub use custom::regist;

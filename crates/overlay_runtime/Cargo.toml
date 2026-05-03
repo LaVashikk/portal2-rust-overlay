@@ -11,6 +11,7 @@ log.workspace = true
 egui.workspace = true
 egui_backend.workspace = true
 portal2-sdk.workspace = true
+overlay_types.workspace = true
 custom_windows.workspace = true
 d3d9_hook_core.workspace = true
 windows.workspace = true

@@ -88,6 +88,7 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "log",
+ "overlay_types",
  "portal2-sdk",
  "windows",
 ]
@@ -296,9 +297,17 @@ dependencies = [
  "egui",
  "egui_backend",
  "log",
+ "overlay_types",
  "portal2-sdk",
  "simplelog",
  "windows",
+]
+
+[[package]]
+name = "overlay_types"
+version = "0.1.0"
+dependencies = [
+ "egui",
 ]
 
 [[package]]

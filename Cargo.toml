@@ -12,6 +12,7 @@ members = [
 
     # Overlay system
     "crates/overlay_runtime",
+    "crates/overlay_types",
     "crates/custom_windows",
 
     # Source Engine FFI bindings
@@ -37,6 +38,7 @@ portal2-sdk = { path = "crates/portal2-sdk" }
 custom_windows = { path = "crates/custom_windows" }
 d3d9_hook_core = { path = "crates/d3d9_hook_core" }
 overlay_runtime = { path = "crates/overlay_runtime" }
+overlay_types = { path = "crates/overlay_types" }
 
 [workspace.dependencies.windows]
 version = "=0.59"

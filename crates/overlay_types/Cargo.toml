@@ -1,0 +1,11 @@
+[package]
+name = "overlay_types"
+publish.workspace = true
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+egui.workspace = true
+
+[lints]
+workspace = true
