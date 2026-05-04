@@ -19,7 +19,7 @@ impl Window for SimpleWindow {
             .show(ctx, |ui| {
                 ui.heading("CVar Inspector");
                 ui.separator();
-                ui.label("I have a keybind set to Q (to open the window). Try pressing it!");
+                ui.label("I have a keybind set to 'F4' (to open the window). Try pressing it!");
 
                 let cvar_system = engine.cvar_system();
                 match cvar_system.find_var("sv_cheats") {

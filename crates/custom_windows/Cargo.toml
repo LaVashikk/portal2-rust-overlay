@@ -10,3 +10,6 @@ log.workspace = true
 windows.workspace = true
 portal2-sdk.workspace = true
 overlay_types.workspace = true
+indexmap = "2.14.0"
+source-fs = "0.3.0"
+source-vmt = { version = "0.3.0", features = ["material_system"] }
