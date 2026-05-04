@@ -1,4 +1,5 @@
-# Portal 2 Rust Overlay Framework
+<div align="center">
+<img src="https://github.com/user-attachments/assets/37220616-a2f5-47be-9811-03d6a3aceffa" alt="Logo" >
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=flat&logo=rust&logoColor=white)](https://www.rust-lang.org/)
@@ -8,6 +9,7 @@
 This repository is a powerful **in-game modding plugin** and a public template for creating custom tools and UIs for Portal 2, built with Rust and the `egui` library. It comes "batteries-included" with a suite of professional-grade tools for modders and developers alike.
 
 **[Get Started](#-quick-install--test) • [Built-in Tools](#-built-in-modding-tools) • **[Showcase](#-showcase)** • [Documentation](CONTRIBUTING.md)** • **[Support](https://github.com/LaVashikk/portal2-rust-overlay/issues)**
+</div>
 
 ---
 
