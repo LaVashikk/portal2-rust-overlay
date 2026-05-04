@@ -58,7 +58,7 @@ Quick toggles for engine performance, Material System flags (`mat_wireframe`, `m
 
 ## Projects Built with this Framework
 
-- [Portal 2 Survey Tool](https://github.com/LaVashikk/portal2-survey-tool) — advanced in-game feedback and bug reporting
+- [Playtest Tool](https://github.com/LaVashikk/portal2-playtest-tool) — advanced in-game feedback and bug reporting
 - [VMF to PBR](https://github.com/LaVashikk/VMF-to-PBR) — in-game interface for editing PBR lightning on Vanilla Portal 2
 - Your project here — see how to add it in [CONTRIBUTING.md](CONTRIBUTING.md#adding-your-project-to-showcase)
 
