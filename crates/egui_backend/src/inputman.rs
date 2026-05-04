@@ -477,3 +477,7 @@ fn get_system_theme() -> Option<Theme> {
 fn get_clipboard_text() -> Option<String> {
     WindowsClipboardContext.get_contents().ok()
 }
+
+pub fn set_clipboard_text(text: String) {
+    let _ = WindowsClipboardContext.set_contents(text);
+}

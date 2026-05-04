@@ -71,7 +71,7 @@ impl EguiDx9Lite {
         }
 
         let input = self.input_man.collect_input();
-        
+
         // Handle zoom events from Ctrl+MouseWheel
         for event in &input.events {
             if let egui::Event::Zoom(factor) = event {
@@ -165,6 +165,16 @@ impl EguiDx9Lite {
         if !output.textures_delta.is_empty() {
             self.tex_man.process_free_deltas(&output.textures_delta);
         }
+
+        for cmd in output.platform_output.commands {
+            match cmd {
+                egui::OutputCommand::CopyText(text) => {
+                    let _ = crate::inputman::set_clipboard_text(text);
+                }
+                _ => {}
+            }
+        }
+
     }
 
     #[inline]
