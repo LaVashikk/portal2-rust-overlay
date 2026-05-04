@@ -40,6 +40,12 @@ impl HotkeyManager {
         self.binds.insert(key, (event, pass_to_game));
     }
 
+    /// Remove a specific KeyCode binding.
+    pub fn remove(&mut self, key: KeyCode) {
+        self.binds.remove(&key);
+    }
+
+    /// Fire a bound event for a specific KeyCode.
     pub fn fire_bind(&self, key: &KeyCode) {
         if let Some((event, _)) = self.binds.get(key) {
             push_event(event.clone());
