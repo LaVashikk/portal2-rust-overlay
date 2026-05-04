@@ -38,10 +38,6 @@ Use this framework as a foundation for a wide variety of tools:
 
 Version 1.0.0 transforms this framework into a ready-to-use modding toolkit. The following tools are available out-of-the-box:
 
-## 🛠️ Built-in Modding Tools
-
-Out of the box, the overlay comes packed with powerful utilities designed to save mappers and modders hours of time.
-
 <img width="1913" height="1082" alt="2026-05-04_22-47" src="https://github.com/user-attachments/assets/b5505780-4225-4984-b9d6-41ebe9dee171" />
 
 ### Material Inspector
@@ -63,6 +59,7 @@ Quick toggles for engine performance, Material System flags (`mat_wireframe`, `m
 ## Projects Built with this Framework
 
 - [Portal 2 Survey Tool](https://github.com/LaVashikk/portal2-survey-tool) — advanced in-game feedback and bug reporting
+- [VMF to PBR](https://github.com/LaVashikk/VMF-to-PBR) — in-game interface for editing PBR lightning on Vanilla Portal 2
 - Your project here — see how to add it in [CONTRIBUTING.md](CONTRIBUTING.md#adding-your-project-to-showcase)
 
 > [TIP] 
