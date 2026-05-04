@@ -14,6 +14,7 @@ pub const BASE_TEXT_SCALE: f32 = 1.25;
 #[derive(Default, Clone)]
 pub struct SharedState {
     pub is_overlay_focused: bool,
+    pub allow_inspect_mode: bool,
     pub hotkeys: HotkeyManager,
     // pub toasts: Toaster,        // TODO: should be GLOBAL!
 

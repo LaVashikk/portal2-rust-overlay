@@ -40,9 +40,11 @@ pub struct UiManager {
     windows: Vec<Box<dyn custom_windows::Window + Send>>,
     engine_instance: &'static portal2_sdk::Engine,
     input_context: Option<SendableContext>,
+
     cursor_visible_in_gui: bool,
     egui_wants_keyboard: bool,
     egui_wants_pointer: bool,
+    is_inspecting: bool,
 
     shared_state: custom_windows::SharedState,
     event_receiver: mpsc::Receiver<events::OverlayEvent>,
@@ -69,6 +71,7 @@ impl UiManager {
             input_context: None,
             egui_wants_keyboard: false,
             egui_wants_pointer: false,
+            is_inspecting: false,
             event_receiver: receiver,
         }
     }
@@ -82,6 +85,7 @@ impl UiManager {
             match event {
                 events::OverlayEvent::ToggleOverlay => {
                     self.shared_state.is_overlay_focused ^= true;
+                    self.is_inspecting = false;
                 },
 
                 events::OverlayEvent::ToggleWindow(name) => {
@@ -170,7 +174,20 @@ impl UiManager {
         }
 
         let is_focused = self.shared_state.is_overlay_focused;
-        let ui_demands_cursor = is_focused || self.egui_wants_pointer;
+
+        // Handle inspect mode
+        if self.shared_state.allow_inspect_mode && is_focused {
+            if umsg == WM_RBUTTONDOWN && !self.egui_wants_pointer {
+                self.is_inspecting = true;
+            } else if umsg == WM_RBUTTONUP {
+                self.is_inspecting = false;
+            }
+        } else {
+            self.is_inspecting = false;
+        }
+
+        let ui_demands_cursor = (is_focused && !self.is_inspecting) || self.egui_wants_pointer;
+
         if ui_demands_cursor != self.cursor_visible_in_gui {
             let input_stack_system = self.engine_instance.input_stack_system();
 
@@ -202,12 +219,18 @@ impl UiManager {
             | WM_LBUTTONDBLCLK | WM_RBUTTONDBLCLK | WM_MBUTTONDBLCLK | WM_XBUTTONDBLCLK
             | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_MOUSEWHEEL | WM_INPUT
         );
+        let is_keyboard_msg = matches!(umsg, WM_KEYUP | WM_KEYDOWN | WM_SYSKEYDOWN | WM_SYSKEYUP | WM_CHAR);
+
+        if self.is_inspecting {
+            return umsg == WM_INPUT || is_keyboard_msg;
+        }
+
         if is_mouse_msg && (is_focused || self.egui_wants_pointer) {
             return false;
         }
 
-        let is_keyboard_msg = matches!(umsg, WM_KEYUP | WM_KEYDOWN | WM_SYSKEYDOWN | WM_SYSKEYUP | WM_CHAR);
-        if is_keyboard_msg && ((self.egui_wants_keyboard && self.egui_wants_pointer) || is_focused) {
+        let is_key_down = matches!(umsg, WM_KEYDOWN | WM_SYSKEYDOWN | WM_CHAR);
+        if is_key_down && ((self.egui_wants_keyboard && self.egui_wants_pointer) || is_focused) {
             return false;
         }
 
@@ -338,7 +361,8 @@ pub static CALLBACKS: Callbacks = Callbacks {
 /// Safe to call multiple times; no-op if nothing to restore.
 pub fn uninstall_overlay() {
     if let Some(app_mutex) = OVERLAY_RUNTIME.get() {
-        if let Ok(app) = app_mutex.try_lock() {
+        if let Ok(mut app) = app_mutex.try_lock() {
+            std::mem::take(&mut app.windows).into_iter().for_each(drop);
             app.engine_instance.game_event_manager().shutdown_all_listeners();
         }
     }
