@@ -23,7 +23,7 @@ default-members = ["crates/injector_d3d9_proxy"]
 [workspace.package]
 publish = false
 edition = "2024"
-version = "0.1.0"
+version = "1.0.0"
 
 [workspace.lints.rust] # For exploratory dev only.
 unused = { level = "allow", priority = -1 }

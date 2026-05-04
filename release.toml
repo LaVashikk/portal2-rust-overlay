@@ -4,11 +4,19 @@
 # Useful for quick installation instructions or general announcements.
 #-----
 release_notes_header = """
-## Quick Install
+## Welcome to v1.0.0 🚀
 
-1.  Download the appropriate `.zip` archive for your desired injection method.
-2.  Follow the instructions in the project `README.md` for that method.
-3.  Press `F3` in-game to toggle the overlay focus.
+This release marks a significant milestone: the transition from a development framework to a **complete modding plugin**. 
+
+### 🌟 New Built-in Tools
+- **Material Inspector:** Live VMT editing and instant in-game previewing.
+- **Post-Processing Suite:** Full control over LUTs, Motion Blur, and Bloom.
+- **Better Fog GUI:** Grab settings from `env_fog_controller` and tune your map's atmosphere on the fly.
+- **Advanced Debug Menu:** Quick access to `mat_` and `r_` debug convars and crosshair entity inspection.
+- **Improved Stability:** Fixed common engine crashes and input capturing issues.
+
+### 📥 Quick Install
+Follow the setup instructions in the [README.md](https://github.com/LaVashikk/portal2-rust-overlay#-quick-install--test).
 """
 
 [[targets]]

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2026-05-04 (First Stable Release)
+
+### Added
+- **Major Framework Evolution**: Transitioned from a template to a full-featured modding plugin, providing powerful tools out of the box for modders.
+- **Built-in Modding Tools**:
+  - **Material Inspector**: Real-time VMT editing, property validation, and instant in-game previewing.
+  - **Post-Processing Menu**: Comprehensive control over Color Correction (LUT), Motion Blur, and Bloom/Autoexposure settings.
+  - **Better Fog GUI**: Advanced fog manipulation with the ability to sync settings from `env_fog_controller`.
+  - **Debug Menu**: Quick toggles for engine performance, Material System flags, and Renderer debug modes.
+
+
 ## [0.1.0-testing.3] - 2026-05-03
 
 ### Added
