@@ -32,6 +32,13 @@ impl IEngineTrace {
         trace
     }
 
+    /// A convenience method for a simple line trace between two points.
+    pub fn line_trace(&self, start: Vector, end: Vector, mask: MaskFlags, skip_entity: Option<&CBaseEntity>) -> Trace_t {
+        let ray = Ray_t::new(start, end);
+        let mut filter = TraceFilter::new(skip_entity);
+        self.trace_ray(&ray, mask, &mut filter)
+    }
+
     /// Traces a ray against a specific entity.
     pub fn clip_ray_to_entity(&self, ray: &Ray_t, mask: MaskFlags, entity: &CBaseEntity) -> Trace_t {
         let mut trace = Trace_t::default();

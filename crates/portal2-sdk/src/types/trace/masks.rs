@@ -97,3 +97,29 @@ bitflags! {
                                      ContentsFlags::SLIME.bits();
     }
 }
+
+bitflags! {
+    /// Flags that can be set on a surface (csurface_t).
+    #[repr(transparent)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct SurfaceFlags: u16 {
+        const NONE          = 0;
+        const LIGHT         = 0x0001; // value will hold the light strength
+        const SKY2D         = 0x0002; // don't draw, indicates we should skylight + draw 2d sky but not draw the 3D skybox
+        const SKY           = 0x0004; // don't draw, but add to skybox
+        const WARP          = 0x0008; // turbulent water warp
+        const TRANS         = 0x0010;
+        const NOPORTAL      = 0x0020; // the surface can not have a portal placed on it
+        const TRIGGER       = 0x0040; // xbox hack to work around elimination of trigger surfaces
+        const NODRAW        = 0x0080; // don't bother referencing the texture
+        const HINT          = 0x0100; // make a primary bsp splitter
+        const SKIP          = 0x0200; // completely ignore, allowing non-closed brushes
+        const NOLIGHT       = 0x0400; // Don't calculate light
+        const BUMPLIGHT     = 0x0800; // calculate three lightmaps for the surface for bumpmapping
+        const NOSHADOWS     = 0x1000; // Don't receive shadows
+        const NODECALS      = 0x2000; // Don't receive decals
+        const NOPAINT       = 0x2000; // Portal 2: the surface can not have paint placed on it (same as NODECALS)
+        const NOCHOP        = 0x4000; // Don't subdivide patches on this surface
+        const HITBOX        = 0x8000; // surface is part of a hitbox
+    }
+}
