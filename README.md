@@ -60,6 +60,7 @@ Quick toggles for engine performance, Material System flags (`mat_wireframe`, `m
 
 - [Playtest Tool](https://github.com/LaVashikk/portal2-playtest-tool) — advanced in-game feedback and bug reporting
 - [VMF to PBR](https://github.com/LaVashikk/VMF-to-PBR) — in-game interface for editing PBR lightning on Vanilla Portal 2
+- [P2:RO 3D renderer](https://github.com/this-is-not-available/portal2-rust-overlay) — A simple software renderer written in Rust that renders custom 3D scenes in Portal 2
 - Your project here — see how to add it in [CONTRIBUTING.md](CONTRIBUTING.md#adding-your-project-to-showcase)
 
 > [TIP] 
