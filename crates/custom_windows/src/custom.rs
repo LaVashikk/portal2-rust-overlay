@@ -1,4 +1,4 @@
-use overlay_types::{HotkeyManager, KeyCode, events::OverlayEvent};
+use overlay_types::{HotkeyManager, KeyCode, events::{self, OverlayEvent}};
 use portal2_sdk::Engine;
 use crate::{SharedState, Window};
 
@@ -30,7 +30,7 @@ pub(crate) fn regist_windows(shared_state: &mut SharedState) -> Vec<Box<dyn Wind
 }
 
 
-pub(crate) fn regist_events(_engine: &Engine, _shared_state: &mut SharedState) {
+pub(crate) fn regist_events(engine: &Engine, _shared_state: &mut SharedState) {
     // https://developer.valvesoftware.com/wiki/Logic_eventlistener
 
     // EXAMPLES:
@@ -40,7 +40,11 @@ pub(crate) fn regist_events(_engine: &Engine, _shared_state: &mut SharedState) {
     //         4000,
     //     );
     // });
-    //
+
+    engine.game_event_manager().listen("server_spawn", |_| {
+        events::push_event(OverlayEvent::GameEvent("server_spawn".to_string())); // todo: we lose all event-data
+    });
+
     // engine.game_event_manager().listen("server_cvar", |event| {
     //     if event.get_string("cvarname", "") == "sv_cheats" {
     //         let is_enabled = event.get_int("cvarvalue", 0) == 1;

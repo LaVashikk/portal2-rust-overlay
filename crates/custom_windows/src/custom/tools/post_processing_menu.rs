@@ -1,7 +1,7 @@
 use std::ffi::CString;
 
 use egui::{Context, ScrollArea, Slider, Ui, Vec2};
-use overlay_types::toasts;
+use overlay_types::{events::OverlayEvent, toasts};
 use portal2_sdk::Engine;
 use portal2_sdk::types::CEntityRespawnInfo;
 
@@ -58,6 +58,15 @@ impl Window for PostProcessingMenu {
 
     fn is_should_render(&self, shared_state: &SharedState, _engine: &Engine) -> bool {
         shared_state.is_overlay_focused
+    }
+
+    fn on_event(&mut self, event: &overlay_types::events::OverlayEvent, _shared_state: &mut SharedState) {
+        match event {
+            OverlayEvent::GameEvent(s) if s == "server_spawn" => {
+                self.last_hacky_respawn_time = 0.0;
+            }
+            _ => {}
+        }
     }
 
     fn draw(&mut self, ctx: &Context, shared_state: &mut SharedState, engine: &Engine) {
