@@ -1,4 +1,5 @@
-use std::path::PathBuf;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 use egui::{Color32, Context, ScrollArea, TextEdit, Ui, Vec2};
 use overlay_types::events::{OverlayEvent, push_event};
@@ -23,6 +24,8 @@ pub struct MaterialInspector {
     new_prop_key: String,
     new_prop_value: String,
 
+    // file_dialog: FileDialog,
+    disabled_properties: HashSet<String>,
 
     error_message: Option<String>,
     mat_sys: source_vmt::MaterialSystem<DummyVpk>,
@@ -43,6 +46,8 @@ impl MaterialInspector {
             backup_vmt_bytes: None,
             new_prop_key: String::new(),
             new_prop_value: String::new(),
+            // file_dialog: FileDialog::new(),
+            disabled_properties: HashSet::new(),
             error_message: None,
             mat_sys,
         }
@@ -85,21 +90,31 @@ impl MaterialInspector {
             let has_path = self.current_file_path.is_some();
             let has_vmt = self.current_vmt.is_some();
 
-            // Calculate exactly 50% width for each button
+            // Calculate exactly 25% width for each button
             let spacing = ui.spacing().item_spacing.x;
-            let button_width = (ui.available_width() - spacing) / 2.0;
+            let button_width = (ui.available_width() - spacing * 3.0) / 3.0;
 
             ui.add_enabled_ui(has_vmt, |ui| {
-                if ui.add_sized([button_width, 24.0], egui::Button::new("👁 Preview")).clicked() {
+                if ui.add_sized([button_width, 25.0], egui::Button::new("👁 Preview")).clicked() {
                     self.preview_material();
                 }
             });
 
             let save_response = ui.add_enabled_ui(has_path, |ui| {
-                if ui.add_sized([button_width, 24.0], egui::Button::new("💾 Save & Apply")).clicked() {
-                    self.save_and_apply(engine);
+                if ui.add_sized([button_width, 25.0], egui::Button::new("💾 Save")).clicked() {
+                    self.save_and_apply(&self.current_file_path.clone().unwrap(), false);
+                }
+                // if ui.add_sized([button_width, 25.0], egui::Button::new("💾 Save as")).clicked() {
+                //     self.file_dialog.save_file();
+                // }
+                if ui.add_sized([button_width, 25.0], egui::Button::new("✅ Save & Apply")).clicked() {
+                    self.save_and_apply(&self.current_file_path.clone().unwrap(), true);
                 }
             }).response;
+
+            // if let Some(path) = self.file_dialog.take_picked() {
+            //     log::info!("saving to {}", path.display());
+            // }
 
             // Display warning as a tooltip instead of rendering raw path text
             if !has_path && has_vmt {
@@ -113,7 +128,9 @@ impl MaterialInspector {
         properties: &mut indexmap::IndexMap<source_vmt::VmtKey, Vec<Value>>,
         block_name: &str,
         fs: &FileSystem<DummyVpk>,
-        keys_to_remove: &mut Vec<String>
+        keys_to_remove: &mut Vec<String>,
+        disabled_keys: &mut HashSet<String>,
+        shift_held: bool,
     ) -> bool {
         let mut any_changed = false;
 
@@ -126,17 +143,41 @@ impl MaterialInspector {
                 for (k, v_list) in properties.iter_mut() {
                     for v in v_list.iter_mut() {
                         if let Value::Str(s) = v {
-                            ui.horizontal(|ui| {
-                                if block_name == "root" {
-                                    let trash_btn = egui::Button::new(
-                                        egui::RichText::new("🗑").color(Color32::GRAY)
-                                    ).frame(false);
+                            let is_disabled = disabled_keys.contains(k.as_str());
 
-                                    if ui.add(trash_btn).on_hover_text("Delete property").clicked() {
-                                        keys_to_remove.push(k.to_string());
+                            ui.horizontal(|ui| {
+                               if block_name == "root" {
+                                    if shift_held {
+                                        let trash_btn = egui::Button::new(
+                                            egui::RichText::new("🗑").color(Color32::RED)
+                                        ).frame(false);
+
+                                        if ui.add(trash_btn).on_hover_text("Delete property").clicked() {
+                                            keys_to_remove.push(k.to_string());
+                                        }
+                                    } else {
+                                        let icon_color = if is_disabled { Color32::DARK_GRAY } else { Color32::LIGHT_GRAY };
+                                        let eye_btn = egui::Button::new(
+                                            egui::RichText::new("👁").color(icon_color)
+                                        ).frame(false);
+
+                                        if ui.add(eye_btn).on_hover_text("Toggle visibility (Hold SHIFT to delete)").clicked() {
+                                            if is_disabled {
+                                                disabled_keys.remove(k.as_str());
+                                            } else {
+                                                disabled_keys.insert(k.to_string());
+                                            }
+                                            any_changed = true; // Триггерим превью при скрытии/показе слоя
+                                        }
                                     }
                                 }
-                                ui.label(k.to_string());
+
+                                let label_text = egui::RichText::new(k.to_string());
+                                if is_disabled {
+                                    ui.label(label_text.color(Color32::DARK_GRAY).strikethrough());
+                                } else {
+                                    ui.label(label_text);
+                                }
                             });
 
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -150,7 +191,7 @@ impl MaterialInspector {
                                                 || fs.find_asset(s, "materials/", ".vtf", "mod").is_some();
 
                                             if is_valid {
-                                                ui.colored_label(Color32::GREEN, "✔");
+                                                ui.colored_label(if is_disabled {Color32::DARK_GRAY} else {Color32::GREEN}, "✔");
                                             } else {
                                                 ui.colored_label(Color32::RED, "❌").on_hover_text("Texture not found");
                                             }
@@ -188,7 +229,7 @@ impl MaterialInspector {
                         .default_open(true)
                         .show(ui, |ui| {
                             let block_id = format!("{}_{}_{}", block_name, k, idx);
-                            any_changed |= Self::draw_vmt_block(ui, map, &block_id, fs, keys_to_remove);
+                            any_changed |= Self::draw_vmt_block(ui, map, &block_id, fs, keys_to_remove, disabled_keys, shift_held);
                         });
                 }
             }
@@ -201,15 +242,24 @@ impl MaterialInspector {
     // BUSINESS LOGIC & ENGINE COMMANDS
     // ==========================================
 
+    /// Creates a "clean" copy of the VMT with all hidden properties removed.
+    fn get_exportable_vmt(&self) -> Option<Vmt> {
+        let mut vmt = self.current_vmt.clone()?;
+        for key in &self.disabled_properties {
+            vmt.remove(key);
+        }
+        Some(vmt)
+    }
+
     fn preview_material(&mut self) {
-        if let (Some(vmt), Some(path)) = (&self.current_vmt, &self.current_file_path) {
+        if let (Some(export_vmt), Some(path)) = (self.get_exportable_vmt(), &self.current_file_path) {
             if self.backup_vmt_bytes.is_none() {
                 if let Ok(bytes) = std::fs::read(path) {
                     self.backup_vmt_bytes = Some(bytes);
                 }
             }
 
-            if let Ok(serialized_vmt) = vmt.to_string() {
+            if let Ok(serialized_vmt) = export_vmt.to_string() {
                 if std::fs::write(path, serialized_vmt).is_ok() {
                     let cmd = format!("mat_reloadmaterial {}", self.current_material_name);
                     push_event(OverlayEvent::EngineCommand(cmd));
@@ -235,6 +285,7 @@ impl MaterialInspector {
         self.current_vmt = None;
         self.current_file_path = None;
         self.current_material_name.clear();
+        self.disabled_properties.clear();
 
         let e = engine.entities();
         let local_player = e.find_by_classname(None, "player");
@@ -269,7 +320,6 @@ impl MaterialInspector {
 
     fn load_material(&mut self) {
         let mat_name = &self.current_material_name;
-
         if let Ok(vmt_arc) = self.mat_sys.get_material(mat_name) {
             self.current_vmt = Some((*vmt_arc).clone());
             toasts::success(format!("Loaded: {}", mat_name), 3000);
@@ -281,29 +331,29 @@ impl MaterialInspector {
         }
     }
 
-    fn save_and_apply(&mut self, _engine: &Engine) {
-        if let Some(vmt) = &self.current_vmt {
-            if let Some(path) = &self.current_file_path {
-                match vmt.to_string() {
-                    Ok(serialized_vmt) => {
-                        match std::fs::write(path, serialized_vmt) {
-                            Ok(_) => {
-                                // Clear backup because the modified file is now the new permanent baseline
-                                self.backup_vmt_bytes = None;
-                                // Update MaterialSystem with the latest version of the material
-                                self.mat_sys.register(&self.current_material_name, vmt.clone());
+    fn save_and_apply(&mut self, path: &Path, should_apply: bool) {
+        if let Some(vmt) = self.get_exportable_vmt() {
+            match vmt.to_string() {
+                Ok(serialized_vmt) => {
+                    match std::fs::write(path, serialized_vmt) {
+                        Ok(_) => {
+                            // Clear backup because the modified file is now the new permanent baseline
+                            self.backup_vmt_bytes = None;
+                            // Update MaterialSystem with the latest version of the material
+                            self.mat_sys.register(&self.current_material_name, vmt);
 
-                                toasts::success("Material saved to disk!", 3000);
+                            toasts::success("Material saved to disk!", 3000);
+                            if should_apply {
                                 push_event(OverlayEvent::EngineCommand("mat_reloadallmaterials".into()));
                             }
-                            Err(e) => {
-                                toasts::error(format!("File write error: {}", e), 4000);
-                            }
+                        }
+                        Err(e) => {
+                            toasts::error(format!("File write error: {}", e), 4000);
                         }
                     }
-                    Err(e) => {
-                        toasts::error(format!("Serialization error: {:?}", e), 4000);
-                    }
+                }
+                Err(e) => {
+                    toasts::error(format!("Serialization error: {:?}", e), 4000);
                 }
             }
         }
@@ -335,6 +385,8 @@ impl Window for MaterialInspector {
 
     fn draw(&mut self, ctx: &Context, _shared_state: &mut SharedState, engine: &Engine) {
         let mut open = self.is_open;
+
+        // self.file_dialog.update(ctx);
 
         egui::Window::new(self.name())
             .open(&mut open)
@@ -368,6 +420,8 @@ impl Window for MaterialInspector {
                     let mut keys_to_remove = Vec::new();
                     let mut add_prop_request = None;
 
+                    let shift_held = ctx.input(|i| i.modifiers.shift);
+
                     if let Some(vmt) = &mut self.current_vmt {
                         ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
 
@@ -379,8 +433,22 @@ impl Window for MaterialInspector {
                             });
 
                             ui.add_space(12.0);
+                            ui.label(egui::RichText::new("ℹ Hold SHIFT to delete properties")
+                                .small()
+                                .color(if shift_held { Color32::WHITE } else { Color32::GRAY })
+                            );
 
-                            if Self::draw_vmt_block(ui, &mut vmt.properties, "root", fs, &mut keys_to_remove) {
+                            ui.add_space(6.0);
+
+                            if Self::draw_vmt_block(
+                                ui,
+                                &mut vmt.properties,
+                                "root",
+                                fs,
+                                &mut keys_to_remove,
+                                &mut self.disabled_properties,
+                                shift_held
+                            ) {
                                 trigger_preview = true;
                             }
 
@@ -412,6 +480,7 @@ impl Window for MaterialInspector {
 
                         // Process Additions
                         if let Some((k, v)) = add_prop_request {
+                            self.disabled_properties.remove(&k);
                             vmt.set_string(&k, &v);
                             trigger_preview = true;
                             new_key.clear();
@@ -421,6 +490,7 @@ impl Window for MaterialInspector {
                         // Process Deletions
                         for key in keys_to_remove {
                             vmt.remove(&key);
+                            self.disabled_properties.remove(&key);
                             trigger_preview = true;
                         }
 
