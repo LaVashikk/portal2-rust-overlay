@@ -26,7 +26,7 @@ use crate::input_system::IInputStackSystem;
 use crate::server::IVEngineServer;
 use crate::server_tools::IServerTools;
 pub use client::IVEngineClient;
-pub use cvar::{ICvar, CvarFlags, ConVar, ConCommandBase};
+pub use cvar::{ICvar, CvarFlags, ConVar, ConVarBuilder, ConCommand, ConCommandBuilder, ConCommandBase, CCommand, Color};
 pub use game_events::IGameEventManager2;
 pub use engine_trace::IEngineTrace;
 pub use debug_overlay::IVDebugOverlay;
@@ -253,6 +253,9 @@ impl Engine {
         let icvar = ICvar {
             this: icvar_this as *mut _,
             find_var: find_fn!(vstdlib_mem, vstdlib_base, FIND_VAR_PATTERN, FIND_VAR_MASK, "FindVar"),
+            find_command_base: get_vfunc!(icvar_this, 13),
+            register_con_command: get_vfunc!(icvar_this, 9),
+            unregister_con_command: get_vfunc!(icvar_this, 10),
         };
 
         let game_event_manager = IGameEventManager2 {
