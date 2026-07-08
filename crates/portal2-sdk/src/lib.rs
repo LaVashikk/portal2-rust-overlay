@@ -11,6 +11,7 @@ pub mod types;
 mod interfaces;
 mod memory;
 mod entities;
+pub mod utils;
 
 mod server;
 mod server_tools;
