@@ -256,6 +256,8 @@ impl Engine {
             find_command_base: get_vfunc!(icvar_this, 13),
             register_con_command: get_vfunc!(icvar_this, 9),
             unregister_con_command: get_vfunc!(icvar_this, 10),
+            console_color_printf: get_vfunc!(icvar_this, 24),
+            console_printf: get_vfunc!(icvar_this, 25),
         };
 
         let game_event_manager = IGameEventManager2 {
@@ -485,5 +487,35 @@ impl Engine {
         };
 
         Some(server_tools)
+    }
+}
+
+/// Prints a formatted message directly to the in-game developer console (`~`).
+#[macro_export]
+macro_rules! con_print {
+    ($($arg:tt)*) => {
+        $crate::console_print(&std::format!($($arg)*))
+    };
+}
+
+/// Prints a colored formatted message directly to the in-game developer console (`~`).
+#[macro_export]
+macro_rules! con_color_print {
+    ($color:expr, $($arg:tt)*) => {
+        $crate::console_color_print($color, &std::format!($($arg)*))
+    };
+}
+
+/// Prints a string directly to the in-game developer console (`~`).
+pub fn console_print(msg: &str) {
+    if let Some(engine) = ENGINE.get() {
+        engine.cvar_system().console_print(msg);
+    }
+}
+
+/// Prints a colored (`RGBA`) string directly to the in-game developer console (`~`).
+pub fn console_color_print(color: Color, msg: &str) {
+    if let Some(engine) = ENGINE.get() {
+        engine.cvar_system().console_color_print(color, msg);
     }
 }

@@ -155,6 +155,8 @@ pub struct ICvar {
     pub(crate) find_command_base: FnFindCommandBase,
     pub(crate) register_con_command: FnRegisterConCommand,
     pub(crate) unregister_con_command: FnUnregisterConCommand,
+    pub(crate) console_color_printf: FnConsoleColorPrintf,
+    pub(crate) console_printf: FnConsolePrintf,
 }
 
 impl ICvar {
@@ -193,6 +195,26 @@ impl ICvar {
     pub fn unregister_con_command(&self, base: &mut ConCommandBase) {
         unsafe {
             (self.unregister_con_command)(self.this, base as *mut ConCommandBase);
+        }
+    }
+
+    /// Prints text directly to the in-game developer console (`~`).
+    pub fn console_print(&self, msg: &str) {
+        if let Ok(c_msg) = std::ffi::CString::new(msg) {
+            let fmt = b"%s\0".as_ptr() as *const c_char;
+            unsafe {
+                (self.console_printf)(self.this, fmt, c_msg.as_ptr());
+            }
+        }
+    }
+
+    /// Prints colored text (`RGBA`) directly to the in-game developer console (`~`).
+    pub fn console_color_print(&self, color: Color, msg: &str) {
+        if let Ok(c_msg) = std::ffi::CString::new(msg) {
+            let fmt = b"%s\0".as_ptr() as *const c_char;
+            unsafe {
+                (self.console_color_printf)(self.this, &color as *const Color, fmt, c_msg.as_ptr());
+            }
         }
     }
 }
