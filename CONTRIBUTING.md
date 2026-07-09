@@ -183,20 +183,49 @@ The output DLL will be in `target/i686-pc-windows-msvc/release/`.
 
 ### Events, Hotkeys & Global State
 
-The framework provides powerful cross-communication abstractions via the `overlay_types` crate.
+The framework provides powerful cross-communication abstractions via `overlay_types` and `custom_windows`.
 
-**Global Shared State**
-You can add your own custom mod state to `SharedState` in `crates/custom_windows/src/lib.rs`. Since this struct is passed mutably to all window `draw` and `on_event` calls, it acts as a perfect single source of truth for your data!
+**Global Shared State & `edit_shared_state`**
+You can add your own custom mod fields to `SharedState` inside `crates/custom_windows/src/lib.rs`.
+* Inside window `draw` and `on_event` methods, `SharedState` is passed directly as `&mut SharedState`, making it the perfect single source of truth for your data!
+* **Editing from anywhere else:** If you need to modify `SharedState` from external callbacks, engine event listeners, background threads, or audio/networking tasks where `&mut SharedState` isn't directly accessible, use `custom_windows::edit_shared_state` (or `crate::edit_shared_state` from within `custom_windows`):
+  ```rust
+  custom_windows::edit_shared_state(|state| {
+      state.is_overlay_focused = true;
+      // modify any custom fields safely on the UI thread!
+  });
+  ```
 
-**The Event Bus**
-To decouple windows and logic, you can send events asynchronously via `events::push_event(OverlayEvent)`. 
-* Built-in events include: `ToggleOverlay`, `ToggleWindow("Name")`, `SetWindowState("Name", bool)`, `EngineCommand`, etc.
-* Custom events can be dispatched via `OverlayEvent::Command(String)`.
+**The Event Bus (`events::push_event`)**
+To decouple windows, hotkeys, and game logic, you can push asynchronous events across threads via `overlay_types::events::push_event(OverlayEvent)`.
+* **`ToggleOverlay`**: Toggles overall overlay visibility (`F3` by default).
+* **`SetOverlayFocus(bool)`**: Explicitly sets whether the overlay has focus and captures input (`true`) or releases mouse/keyboard to the game (`false`).
+* **`ToggleWindow("Name")` / `SetWindowState("Name", bool)`**: Opens or closes a specific registered UI window by name.
+* **`CloseAllWindows` / `OpenAllWindows`**: Quickly hides or restores all UI windows at once.
+* **`EngineCommand(String)`**: Executes a client console command unrestricted inside the Source Engine.
+* **`Command(String)`**: Dispatches custom commands/events that any of your windows can listen and react to inside `on_event(&mut self, event, shared_state)`.
 
 **Hotkeys**
 Instead of manually intercepting low-level WinAPI messages, you can map high-level keys to `OverlayEvent`s inside the `regist_hotkeys` function in `custom.rs`. The framework automatically figures out if it should intercept the key press or pass it down to the Source engine.
 
 ### Advanced Examples
+
+<details>
+<summary><b>Modifying SharedState from Game Listeners & Threads</b></summary>
+
+```rust
+// Inside custom_windows/src/custom.rs -> regist_events
+engine.game_event_manager().listen("player_death", |_event| {
+    // Modify SharedState cleanly from an engine callback:
+    crate::edit_shared_state(|state| {
+        // e.g. increment a custom death counter stored in state
+    });
+
+    // Or trigger a global UI event:
+    overlay_types::events::push_event(OverlayEvent::ToggleWindow("Death Summary"));
+});
+```
+</details>
 
 <details>
 <summary><b>Working with CVars</b></summary>
@@ -218,6 +247,58 @@ if let Some(mut cvar) = engine.cvar_system().find_var("host_timescale") {
 
 // Execute console commands
 engine.client().execute_client_cmd_unrestricted("sv_cheats 1");
+```
+</details>
+
+<details>
+<summary><b>Registering Custom CVars & Commands</b></summary>
+
+You can register your own custom console commands and variables directly into the Source Engine using `portal2_sdk::cvar::{ConCommand, ConVar, CvarFlags, CCommand}`.
+
+**Using quick shortcuts (`register_new`):**
+```rust
+use portal2_sdk::cvar::{ConCommand, ConVar, CvarFlags, CCommand};
+
+extern "C" fn survey_callback(_cmd: &CCommand) {
+    log::info!("survey command executed from game console!");
+    overlay_types::events::push_event(OverlayEvent::ToggleWindow("Survey"));
+}
+
+// Register a custom command
+ConCommand::register_new(
+    "open_survey_ui",
+    "Opens the survey window (arg: path to config)",
+    CvarFlags::NONE,
+    survey_callback,
+).expect("Failed to register concommand");
+
+// Register a custom variable
+let _open_survey = ConVar::register_new(
+    "open_survey",
+    "0",
+    "Target survey config path or 0 to close",
+    CvarFlags::NONE,
+).expect("Failed to register convar");
+```
+
+**Using the advanced Builder API (`builder`):**
+If you need fine-grained control such as numeric ranges (`min`/`max`), use `ConVar::builder` / `ConCommand::builder` (or `ConVarBuilder` / `ConCommandBuilder`):
+```rust
+use portal2_sdk::cvar::{ConVar, ConCommand, CvarFlags};
+
+let _fov_offset = ConVar::builder("my_custom_fov_offset", "0.0")
+    .help_text("Additional FOV offset applied by custom overlay")
+    .flags(CvarFlags::ARCHIVE)
+    .min(-30.0)
+    .max(30.0)
+    .register()
+    .expect("Failed to register FOV cvar");
+
+let _cmd = ConCommand::builder("my_custom_action", survey_callback)
+    .help_text("Triggers custom mod action")
+    .flags(CvarFlags::NONE)
+    .register()
+    .expect("Failed to register concommand");
 ```
 </details>
 
