@@ -11,9 +11,7 @@
 #![cfg(all(target_os = "windows", target_pointer_width = "32"))]
 
 use std::ffi::c_void;
-use std::sync::{Mutex, OnceLock};
-use std::thread;
-
+use std::sync::{LazyLock, Mutex};
 use windows::core::HRESULT;
 use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::Graphics::Direct3D9::{
@@ -73,68 +71,65 @@ struct HookState {
 unsafe impl Send for HookState {}
 unsafe impl Sync for HookState {}
 
-static STATE: OnceLock<Mutex<HookState>> = OnceLock::new();
-
-fn state() -> &'static Mutex<HookState> {
-    STATE.get_or_init(|| {
-        Mutex::new(HookState {
-            callbacks: None,
-            device: None,
-            hwnd: None,
-            o_create_device: None,
-            o_present: None,
-            o_reset: None,
-            present_installed: false,
-            reset_installed: false,
-            device_notified: false,
-        })
+static STATE: LazyLock<Mutex<HookState>> = LazyLock::new(|| {
+    Mutex::new(HookState {
+        callbacks: None,
+        device: None,
+        hwnd: None,
+        o_create_device: None,
+        o_present: None,
+        o_reset: None,
+        present_installed: false,
+        reset_installed: false,
+        device_notified: false,
     })
-}
+});
+
 
 /// Install CreateDevice hook on an IDirect3D9 instance (method 1 / d3d9 proxy).
 ///
 /// Safety: Caller must ensure `d3d9` is a valid IDirect3D9 object pointer from Direct3DCreate9.
-pub unsafe fn install_on_d3d9(d3d9: *mut IDirect3D9, cb: &'static Callbacks) -> anyhow::Result<()> { unsafe {
+pub unsafe fn install_on_d3d9(d3d9: *mut IDirect3D9, cb: &'static Callbacks) -> anyhow::Result<()> {
     {
-        let mut st = state().lock().unwrap();
+        let mut st = STATE.lock().unwrap();
         st.callbacks = Some(cb);
     }
 
     // IDirect3D9::CreateDevice is at vtable index 16.
-    let vtable_ptr = *(d3d9 as *mut *mut usize);
-    let create_device_fn_ptr_location = vtable_ptr.add(16);
+    let vtable_ptr = unsafe { *(d3d9 as *mut *mut usize) };
+    let create_device_fn_ptr_location = unsafe { vtable_ptr.add(16) };
 
     {
-        let mut st = state().lock().unwrap();
+        let mut st = STATE.lock().unwrap();
         if st.o_create_device.is_none() {
-            st.o_create_device = Some(std::mem::transmute(create_device_fn_ptr_location.read()));
+            st.o_create_device = Some(unsafe { std::mem::transmute(create_device_fn_ptr_location.read()) });
         }
     }
 
     // Patch vtable entry to our hook.
     let mut old_protect = PAGE_PROTECTION_FLAGS(0);
-    VirtualProtect(
+    unsafe { VirtualProtect(
         create_device_fn_ptr_location as _,
         std::mem::size_of::<usize>(),
         PAGE_EXECUTE_READWRITE,
         &mut old_protect,
     )
     .ok()
-    .expect("VirtualProtect failed for CreateDevice entry");
+    .expect("VirtualProtect failed for CreateDevice entry") };
 
-    create_device_fn_ptr_location.write(hooked_create_device as *const () as usize);
+    unsafe { create_device_fn_ptr_location.write(hooked_create_device as *const () as usize) };
 
-    VirtualProtect(
+    unsafe { VirtualProtect(
         create_device_fn_ptr_location as _,
         std::mem::size_of::<usize>(),
         old_protect,
         &mut old_protect,
     )
     .ok()
-    .expect("VirtualProtect restore failed for CreateDevice entry");
+    .expect("VirtualProtect restore failed for CreateDevice entry") };
 
     Ok(())
-}}
+}
 
 /// Start a thread that tries to find the device via offsets (methods 2/3).
 pub fn start_offsets_hook_thread(
@@ -143,11 +138,11 @@ pub fn start_offsets_hook_thread(
     cb: &'static Callbacks,
 ) {
     {
-        let mut st = state().lock().unwrap();
+        let mut st = STATE.lock().unwrap();
         st.callbacks = Some(cb);
     }
 
-    thread::spawn(move || {
+    std::thread::spawn(move || {
         if delay_ms > 0 {
             std::thread::sleep(std::time::Duration::from_millis(delay_ms));
         }
@@ -160,7 +155,7 @@ pub fn start_offsets_hook_thread(
                 let mut params = D3DDEVICE_CREATION_PARAMETERS::default();
                 if device.GetCreationParameters(&mut params).is_ok() {
                     let hwnd = params.hFocusWindow;
-                    let mut st = state().lock().unwrap();
+                    let mut st = STATE.lock().unwrap();
                     st.device = Some(device.clone());
                     st.hwnd = Some(hwnd);
 
@@ -193,11 +188,11 @@ unsafe extern "system" fn hooked_create_device(
     behaviorflags: u32,
     ppresentationparameters: *mut D3DPRESENT_PARAMETERS,
     ppreturneddeviceinterface: *mut Option<IDirect3DDevice9>,
-) -> HRESULT { unsafe {
+) -> HRESULT {
     // Call original CreateDevice first.
     let hr = {
-        let st = state().lock().unwrap();
-        (st.o_create_device.unwrap())(
+        let st = STATE.lock().unwrap();
+        unsafe { (st.o_create_device.unwrap())(
             this,
             adapter,
             devicetype,
@@ -205,14 +200,14 @@ unsafe extern "system" fn hooked_create_device(
             behaviorflags,
             ppresentationparameters,
             ppreturneddeviceinterface,
-        )
+        ) }
     };
 
     if hr.is_ok() {
-        if let Some(Some(device)) = ppreturneddeviceinterface.as_mut() {
+        if let Some(Some(device)) = unsafe { ppreturneddeviceinterface.as_mut() } {
             // Notify overlay first.
             {
-                let mut st = state().lock().unwrap();
+                let mut st = STATE.lock().unwrap();
                 st.device = Some(device.clone());
                 st.hwnd = Some(hfocuswindow);
 
@@ -225,35 +220,36 @@ unsafe extern "system" fn hooked_create_device(
             }
 
             // Then install Present/Reset hooks on the device.
-            install_device_hooks(device);
+            unsafe { install_device_hooks(device) };
         }
     }
 
     hr
-}}
+}
 
 unsafe extern "system" fn hooked_reset(
     this: IDirect3DDevice9,
     params: *mut D3DPRESENT_PARAMETERS,
-) -> HRESULT { unsafe {
+) -> HRESULT {
     // Pre-reset callback
     {
-        let st = state().lock().unwrap();
+        let st = STATE.lock().unwrap();
         if let Some(cb) = st.callbacks {
             (cb.on_pre_reset)();
         }
     }
 
+
     // Call original Reset
     let hr = {
-        let st = state().lock().unwrap();
-        (st.o_reset.unwrap())(this.clone(), params)
+        let st = STATE.lock().unwrap();
+        unsafe { (st.o_reset.unwrap())(this.clone(), params) }
     };
 
     if hr.is_ok() {
         // Post-reset callback
         {
-            let st = state().lock().unwrap();
+            let st = STATE.lock().unwrap();
             if let Some(cb) = st.callbacks {
                 (cb.on_post_reset)(&this);
             }
@@ -261,7 +257,7 @@ unsafe extern "system" fn hooked_reset(
     }
 
     hr
-}}
+}
 
 unsafe extern "system" fn hooked_present(
     this: IDirect3DDevice9,
@@ -269,17 +265,17 @@ unsafe extern "system" fn hooked_present(
     dst: *const RECT,
     hwnd: HWND,
     dirty: *const c_void,
-) -> HRESULT { unsafe {
+) -> HRESULT {
     // Lazy on_device_created if we didn't notify yet (covers offsets path).
     {
-        let mut st = state().lock().unwrap();
+        let mut st = STATE.lock().unwrap();
         if !st.device_notified {
             // Try resolve HWND from device if not present
             let hwnd_to_use = if let Some(h) = st.hwnd {
                 h
             } else {
                 let mut params = D3DDEVICE_CREATION_PARAMETERS::default();
-                if this.GetCreationParameters(&mut params).is_ok() {
+                if unsafe { this.GetCreationParameters(&mut params).is_ok() } {
                     params.hFocusWindow
                 } else {
                     hwnd // fallback
@@ -297,7 +293,7 @@ unsafe extern "system" fn hooked_present(
 
     // Per-frame callback
     {
-        let st = state().lock().unwrap();
+        let st = STATE.lock().unwrap();
         if let Some(cb) = st.callbacks {
             (cb.on_present)(&this);
         }
@@ -305,72 +301,72 @@ unsafe extern "system" fn hooked_present(
 
     // Call original Present
     let hr = {
-        let st = state().lock().unwrap();
-        (st.o_present.unwrap())(this, src, dst, hwnd, dirty)
+        let st = STATE.lock().unwrap();
+        unsafe { (st.o_present.unwrap())(this, src, dst, hwnd, dirty) }
     };
 
     hr
-}}
+}
 
 // ============================================================
 // Device hooks installation
 // ============================================================
 
-unsafe fn install_device_hooks(device: &IDirect3DDevice9) { unsafe {
-    let mut st = state().lock().unwrap();
+unsafe fn install_device_hooks(device: &IDirect3DDevice9) {
+    let mut st = STATE.lock().unwrap();
     if st.present_installed && st.reset_installed {
         return;
     }
 
     // Get COM object vtable
-    let com_ptr = *(device as *const _ as *const usize);
-    let vtable_ptr = *(com_ptr as *const usize);
+    let com_ptr = unsafe { *(device as *const _ as *const usize) };
+    let vtable_ptr = unsafe { *(com_ptr as *const usize) };
 
     // Reset is vtable index 16
     let reset_entry = (vtable_ptr + 16 * std::mem::size_of::<usize>()) as *mut usize;
     if !st.reset_installed {
-        st.o_reset = Some(std::mem::transmute(reset_entry.read()));
-        patch_vtable_entry(reset_entry, hooked_reset as *const () as usize);
+        st.o_reset = Some(unsafe { std::mem::transmute(reset_entry.read()) });
+        unsafe { patch_vtable_entry(reset_entry, hooked_reset as *const () as usize) };
         st.reset_installed = true;
     }
 
     // Present is vtable index 17
     let present_entry = (vtable_ptr + 17 * std::mem::size_of::<usize>()) as *mut usize;
     if !st.present_installed {
-        st.o_present = Some(std::mem::transmute(present_entry.read()));
-        patch_vtable_entry(present_entry, hooked_present as *const () as usize);
+        st.o_present = Some(unsafe { std::mem::transmute(present_entry.read()) });
+        unsafe { patch_vtable_entry(present_entry, hooked_present as *const () as usize) };
         st.present_installed = true;
     }
-}}
+}
 
-unsafe fn patch_vtable_entry(entry: *mut usize, new_fn: usize) { unsafe {
+unsafe fn patch_vtable_entry(entry: *mut usize, new_fn: usize) {
     let mut old_protect = PAGE_PROTECTION_FLAGS(0);
-    VirtualProtect(
+    unsafe { VirtualProtect(
         entry as _,
         std::mem::size_of::<usize>(),
         PAGE_EXECUTE_READWRITE,
         &mut old_protect,
     )
     .ok()
-    .expect("VirtualProtect failed for vtable entry");
+    .expect("VirtualProtect failed for vtable entry") };
 
-    entry.write(new_fn);
+    unsafe { entry.write(new_fn) };
 
-    VirtualProtect(
+    unsafe { VirtualProtect(
         entry as _,
         std::mem::size_of::<usize>(),
         old_protect,
         &mut old_protect,
     )
     .ok()
-    .expect("VirtualProtect restore failed for vtable entry");
-}}
+    .expect("VirtualProtect restore failed for vtable entry") };
+}
 
 /// Uninstalls device hooks (Present/Reset) by restoring original vtable entries.
 /// Safe to call multiple times. Returns true if anything was restored.
 pub fn uninstall() -> bool {
     unsafe {
-        let mut st = state().lock().unwrap();
+        let mut st = STATE.lock().unwrap();
 
         // If we have no device, we can't restore vtable entries safely.
         let Some(device) = st.device.clone() else {
@@ -425,13 +421,13 @@ pub fn uninstall() -> bool {
 const SHADER_API_MODULES: &[&str] = &["shaderapidx9.dll", "shaderapivk.dll"];
 
 // Offsets-based device acquisition
-unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice9> { unsafe {
+unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice9> {
     for &module in SHADER_API_MODULES {
         log::debug!("Attempting to get module handle for {}...", module);
         let mut module_cstr = Vec::with_capacity(module.len() + 1);
         module_cstr.extend_from_slice(module.as_bytes());
         module_cstr.push(0);
-        let shader_api = match GetModuleHandleA(windows::core::PCSTR(module_cstr.as_ptr())) {
+        let shader_api = match unsafe { GetModuleHandleA(windows::core::PCSTR(module_cstr.as_ptr())) } {
             Ok(h) if !h.is_invalid() => h,
             _ => {
                 log::debug!("{} not found in process, skipping.", module);
@@ -450,7 +446,7 @@ unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice
                 device_ptr_addr
             );
 
-            let device_ptr = *(device_ptr_addr as *const usize);
+            let device_ptr = unsafe { *(device_ptr_addr as *const usize) };
             log::debug!("Device pointer: 0x{:X}", device_ptr);
 
             if device_ptr == 0 || device_ptr < 0x10000 || device_ptr > 0x7FFFFFFF {
@@ -458,7 +454,7 @@ unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice
                 continue;
             }
 
-            let vtable_ptr = *(device_ptr as *const usize);
+            let vtable_ptr = unsafe { *(device_ptr as *const usize) };
             log::debug!("VTable: 0x{:X}", vtable_ptr);
 
             if vtable_ptr == 0 || vtable_ptr < 0x10000 || vtable_ptr > 0x7FFFFFFF {
@@ -466,7 +462,7 @@ unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice
                 continue;
             }
 
-            let present_addr = *((vtable_ptr + 17 * 4) as *const usize);
+            let present_addr = unsafe { *((vtable_ptr + 17 * 4) as *const usize) };
             log::debug!("  Present function: 0x{:X}", present_addr);
 
             if present_addr == 0 || present_addr < 0x10000 {
@@ -474,7 +470,7 @@ unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice
                 continue;
             }
 
-            let device: IDirect3DDevice9 = std::mem::transmute(device_ptr as *mut c_void);
+            let device: IDirect3DDevice9 = unsafe { std::mem::transmute(device_ptr as *mut c_void) };
 
             log::info!("D3D9 hook successfully initialized via offsets.");
 
@@ -485,4 +481,4 @@ unsafe fn get_d3d_device_by_offsets(offsets: &[usize]) -> Option<IDirect3DDevice
 
     log::error!("Failed to initialize graphics hook. The overlay will not work.");
     None
-}}
+}
