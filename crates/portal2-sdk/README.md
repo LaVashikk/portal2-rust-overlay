@@ -66,8 +66,73 @@ client.execute_client_cmd_unrestricted("echo Hello from Rust!");
 client.execute_client_cmd_unrestricted("sv_gravity 300");
 ```
 
-### 3. Manipulating CVars
-Find and modify console variables, even overriding their protected flags.
+### 3. Printing Directly to the Developer Console (`~`)
+No more hacks with `echo` commands! The SDK provides `con_print!` and `con_color_print!` macros to output text directly into the in-game developer console using native `ICvar` virtual methods.
+
+```rust
+use portal2_sdk::{con_print, con_color_print, Color};
+
+// Standard white console text
+con_print!("Hello from Rust plugin! Loaded successfully.\n");
+
+// Colored console text (Green, Yellow, Red, etc.)
+con_color_print!(Color::rgb(0, 255, 0), "[OK] Mod initialized without errors.\n");
+con_color_print!(Color::rgb(255, 200, 0), "[WARN] High entity count: {}\n", 1024);
+```
+
+### 4. Registering Custom Console Commands (`ConCommand`)
+You can register new custom console commands with native Rust callbacks that receive command-line arguments (`CCommand`).
+
+```rust
+use portal2_sdk::{ConCommand, CCommand, CvarFlags, con_print, con_color_print, Color};
+
+extern "C" fn my_teleport_callback(cmd: &CCommand) {
+    con_print!("Command called! Total arguments: {}\n", cmd.arg_count());
+
+    if let Some(target) = cmd.arg(1) {
+        con_color_print!(Color::rgb(0, 255, 255), "Teleporting to target: {}\n", target);
+    } else {
+        con_color_print!(Color::rgb(255, 50, 50), "Usage: my_teleport <destination>\n");
+    }
+}
+
+// Register command inside the engine:
+ConCommand::register_new(
+    "my_teleport",
+    "Teleports the player to a target location",
+    CvarFlags::NONE,
+    my_teleport_callback,
+).expect("Failed to register custom ConCommand");
+```
+
+### 5. Registering Custom Console Variables (`ConVar`)
+You can create new console settings (`ConVar`) with custom default values, flags, and optional min/max bounds using our high-level builder API or shortcut methods.
+
+```rust
+use portal2_sdk::{ConVar, CvarFlags};
+
+// Using ConVarBuilder for bounded variables:
+let fov_cvar = ConVar::builder("my_custom_fov", "90.0")
+    .help_text("Custom field of view setting")
+    .flags(CvarFlags::ARCHIVE)
+    .min(60.0)
+    .max(140.0)
+    .register()
+    .expect("Failed to register ConVar");
+
+println!("Current custom FOV: {}", fov_cvar.get_float());
+
+// Or using register_new shortcut:
+ConVar::register_new(
+    "open_survey",
+    "0",
+    "Target survey config path or 0 to close",
+    CvarFlags::NONE,
+).expect("Failed to register open_survey");
+```
+
+### 6. Manipulating Existing CVars
+Find and modify built-in console variables, even overriding their protected flags.
 
 ```rust
 let cvar_system = engine.cvar_system();
@@ -76,7 +141,7 @@ if let Some(mut cheats_cvar) = cvar_system.find_var("sv_cheats") {
     // Read the value
     println!("Current sv_cheats value: {}", cheats_cvar.get_int());
     
-    // Modify the value
+    // Modify the value natively
     cheats_cvar.set_value_int(1);
     
     // You can even remove flags (like HIDDEN or CHEAT)
