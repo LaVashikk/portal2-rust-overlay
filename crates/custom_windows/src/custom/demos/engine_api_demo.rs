@@ -188,7 +188,7 @@ impl Window for EngineApiDemoWindow {
                     ui.horizontal(|ui| {
                         if ui.button("Load Model").clicked() {
                             let result = client.load_model(&self.load_model_input, false);
-                            log::info!("DEMO: Load model result: {:?}", result); // Log to console, as we can't display a pointer
+                            log::info!(target: "toast", "DEMO: Load model result: {:?}", result); // Log to console, as we can't display a pointer
                                                                                     // are you sure? ._.
                         }
                         ui.add(TextEdit::singleline(&mut self.load_model_input));

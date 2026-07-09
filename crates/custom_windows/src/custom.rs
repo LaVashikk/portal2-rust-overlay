@@ -39,6 +39,7 @@ pub(crate) fn regist_events(engine: &Engine, _shared_state: &mut SharedState) {
     //         format!("started. Name: {}, os: {}, hostname: {}", event.get_string("mapname", ""), event.get_string("os", ""), event.get_string("hostname", "")),
     //         4000,
     //     );
+    //     log::info!(target: "toast", "SERVER SPAWNED!"); // OR this way
     // });
 
     engine.game_event_manager().listen("server_spawn", |_| {
