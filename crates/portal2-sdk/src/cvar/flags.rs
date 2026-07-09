@@ -1,7 +1,21 @@
 use bitflags::bitflags;
 
 bitflags! {
-    /// Represents the bitmask of flags for a ConVar.
+    /// Represents the bitmask of flags for a `ConVar` or `ConCommand`.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use portal2_sdk::CvarFlags;
+    ///
+    /// // Combine flags using bitwise OR (`|`):
+    /// let my_flags = CvarFlags::ARCHIVE | CvarFlags::CHEAT | CvarFlags::NOTIFY;
+    ///
+    /// // Check if a specific flag is present:
+    /// if my_flags.contains(CvarFlags::CHEAT) {
+    ///     // Requires sv_cheats 1
+    /// }
+    /// ```
     #[repr(transparent)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct CvarFlags: i32 {

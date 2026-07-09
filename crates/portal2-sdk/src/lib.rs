@@ -1,7 +1,72 @@
-//! portal2-sdk: A crate for interacting with the Source engine's C++ interfaces.
+//! # Portal 2 Rust SDK (`portal2-sdk`)
 //!
-//! This crate provides a safe and ergonomic API for interacting with the Source engine's C++ interfaces.
-//! It uses a signature-based approach to find the interfaces and their methods in memory.
+//! A high-level, safe, and ergonomic Rust library for interacting with the Source engine's internal C++ virtual
+//! interfaces and subsystems in **Portal 2**.
+//!
+//! This crate utilizes dynamic memory scanning (pattern/signature matching) and virtual vtable borrowing to interact
+//! directly with the game's core systems cleanly without raw C++ wrappers or hardcoded absolute pointers.
+//!
+//! ## Core Capabilities
+//!
+//! - **CVar & Command Management (`ICvar`)**: High-level builders (`ConVarBuilder`, `ConCommandBuilder`) to register custom console settings and commands with Rust callbacks.
+//! - **Developer Console Printing**: Direct, formatted printing to the in-game developer console (`~`) with custom RGBA colors via `con_print!` and `con_color_print!`.
+//! - **Engine & Server Interfaces**: Access to `IVEngineClient`, `IVEngineServer`, `IGameEventManager2`, entity systems, ray tracing, and debug overlays.
+//!
+//! ## Quick Start Examples
+//!
+//! ### 1. Printing to the Developer Console (`~`)
+//!
+//! ```rust,no_run
+//! use portal2_sdk::{con_print, con_color_print, Color};
+//!
+//! // Print standard white text:
+//! con_print!("Loaded mod version {}\n", 1.0);
+//!
+//! // Print colored status text:
+//! con_color_print!(Color::rgb(0, 255, 0), "[OK] Initialization successful!\n");
+//! con_color_print!(Color::rgb(255, 100, 0), "[WARN] High ping detected: {}ms\n", 150);
+//! ```
+//!
+//! ### 2. Registering a Custom Console Command (`ConCommand`)
+//!
+//! ```rust,no_run
+//! use portal2_sdk::{ConCommand, CCommand, CvarFlags, con_print, con_color_print, Color};
+//!
+//! extern "C" fn my_teleport_cmd(cmd: &CCommand) {
+//!     if let Some(target) = cmd.arg(1) {
+//!         con_color_print!(Color::rgb(0, 255, 255), "Teleporting to: {}\n", target);
+//!     } else {
+//!         con_print!("Usage: my_teleport <destination>\n");
+///     }
+/// }
+///
+/// fn setup_commands() {
+///     ConCommand::register_new(
+///         "my_teleport",
+///         "Teleports the player to a target location",
+///         CvarFlags::NONE,
+///         my_teleport_cmd,
+///     ).expect("Failed to register ConCommand");
+/// }
+/// ```
+///
+/// ### 3. Registering a Bounded Console Variable (`ConVar`)
+///
+/// ```rust,no_run
+/// use portal2_sdk::{ConVar, CvarFlags};
+///
+/// fn setup_cvars() {
+///     let fov = ConVar::builder("my_custom_fov", "90.0")
+///         .help_text("Custom field of view setting")
+///         .flags(CvarFlags::ARCHIVE)
+///         .min(60.0)
+///         .max(140.0)
+///         .register()
+///         .expect("Failed to register ConVar");
+///
+///     con_print!("Current custom FOV: {}", fov.get_float());
+/// }
+/// ```
 use std::sync::OnceLock;
 use std::{ffi::c_void, slice};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -500,6 +565,17 @@ macro_rules! con_print {
 }
 
 /// Prints a colored formatted message directly to the in-game developer console (`~`).
+///
+/// Accepts a `Color` (RGBA/RGB) struct as the first argument, followed by standard `format!` arguments.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use portal2_sdk::{con_color_print, Color};
+///
+/// con_color_print!(Color::rgb(0, 255, 0), "[SUCCESS] Plugin enabled successfully.\n");
+/// con_color_print!(Color::rgb(255, 50, 50), "[ERROR] Failed to read config code {}\n", 404);
+/// ```
 #[macro_export]
 macro_rules! con_color_print {
     ($color:expr, $($arg:tt)*) => {
@@ -507,14 +583,14 @@ macro_rules! con_color_print {
     };
 }
 
-/// Prints a string directly to the in-game developer console (`~`).
+/// Prints a raw string directly to the in-game developer console (`~`).
 pub fn console_print(msg: &str) {
     if let Some(engine) = ENGINE.get() {
         engine.cvar_system().console_print(msg);
     }
 }
 
-/// Prints a colored (`RGBA`) string directly to the in-game developer console (`~`).
+/// Prints a raw colored (`RGBA`) string directly to the in-game developer console (`~`).
 pub fn console_color_print(color: Color, msg: &str) {
     if let Some(engine) = ENGINE.get() {
         engine.cvar_system().console_color_print(color, msg);
