@@ -8,7 +8,7 @@
 #![cfg(all(target_os = "windows", target_pointer_width = "32"))]
 
 use std::sync::{Mutex, Once, OnceLock, mpsc};
-use custom_windows::SharedState;
+use custom_windows::{SharedState, SharedStateAction};
 use overlay_types::events::OverlayEvent;
 use windows::core::PCSTR;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
@@ -46,6 +46,7 @@ pub struct UiManager {
     egui_wants_pointer: bool,
     is_inspecting: bool,
 
+    state_action_rx: mpsc::Receiver<SharedStateAction>,
     shared_state: custom_windows::SharedState,
     event_receiver: mpsc::Receiver<events::OverlayEvent>,
 }
@@ -61,7 +62,9 @@ impl UiManager {
 
         // Pass the fresh state to your custom_windows crate to register everything
         let mut shared_state = SharedState::default();
+        let (ss_tx, ss_rx) = mpsc::channel();
         let windows = custom_windows::regist(engine_instance, &mut shared_state);
+        let _ = custom_windows::STATE_ACTION_TX.set(ss_tx);
 
         Self {
             windows,
@@ -73,6 +76,13 @@ impl UiManager {
             egui_wants_pointer: false,
             is_inspecting: false,
             event_receiver: receiver,
+            state_action_rx: ss_rx,
+        }
+    }
+
+    pub(crate) fn handle_state_editing(&mut self) {
+        while let Ok(action) = self.state_action_rx.try_recv() {
+            action(&mut self.shared_state)
         }
     }
 
@@ -87,6 +97,10 @@ impl UiManager {
                     self.shared_state.is_overlay_focused ^= true;
                     self.is_inspecting = false;
                 },
+                events::OverlayEvent::SetOverlayFocus(state) => {
+                    self.shared_state.is_overlay_focused = *state;
+                    self.is_inspecting = false;
+                }
 
                 events::OverlayEvent::ToggleWindow(name) => {
                     if let Some(win) = self.windows.iter_mut().find(|w| w.name() == *name) {
@@ -290,6 +304,7 @@ pub fn on_present(device: &IDirect3DDevice9) {
                 if let Some(app) = OVERLAY_RUNTIME.get() {
                     if let Ok(mut app) = app.lock() {
                         app.handle_events();
+                        app.handle_state_editing();
                         app.draw_ui(ctx);
                     }
                 }

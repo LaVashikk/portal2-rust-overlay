@@ -4,7 +4,7 @@
 //! which every window must implement, and the `regist_windows` function, which assembles and
 //! returns a collection of all active UI windows.
 
-use std::sync::OnceLock;
+use std::sync::{OnceLock, mpsc};
 use overlay_types::{HotkeyManager, events::OverlayEvent};
 use source_fs::{DummyVpk, P2GameInfo};
 use portal2_sdk::Engine;
@@ -13,6 +13,9 @@ use portal2_sdk::Engine;
 pub const BASE_TEXT_SCALE: f32 = 1.25;
 /// List of registered window names.
 pub static REGISTED_WINDOWS: OnceLock<Vec<&'static str>> = OnceLock::new();
+
+pub type SharedStateAction = Box<dyn FnOnce(&mut SharedState) + Send>;
+pub static STATE_ACTION_TX: OnceLock<mpsc::Sender<SharedStateAction>> = OnceLock::new();
 
 /// --- THE SINGLE SOURCE OF TRUTH ---
 /// You can add all your custom mod fields here!
@@ -38,6 +41,19 @@ impl Default for SharedState {
             hotkeys: HotkeyManager::default(),
             valve_fs,
         }
+    }
+}
+
+/// Global helper to safely modify `SharedState` from any thread, engine event listener, or callback.
+///
+/// The closure `f` will be pushed to an internal channel and executed on the UI thread at the start of the next frame.
+#[allow(dead_code)]
+pub fn edit_shared_state<F>(f: F)
+where
+    F: FnOnce(&mut SharedState) + Send + 'static,
+{
+    if let Some(tx) = STATE_ACTION_TX.get() {
+        let _ = tx.send(Box::new(f));
     }
 }
 

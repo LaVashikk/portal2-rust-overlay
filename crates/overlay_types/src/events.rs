@@ -8,6 +8,8 @@ use crate::KeyCode;
 pub enum OverlayEvent {
     /// Toggles the overlay's visibility.
     ToggleOverlay,
+    /// Set overlay system state.
+    SetOverlayFocus(bool),
 
     /// Toggle a window's visibility by its name.
     ToggleWindow(&'static str),
