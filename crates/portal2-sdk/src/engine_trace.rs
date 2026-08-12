@@ -1,13 +1,14 @@
 use std::ffi::{c_int, c_void};
 use crate::types::{Ray_t, Trace_t, TraceFilter, Vector, ICollideable, MaskFlags, CBaseEntity};
+use crate::platform::abi::vfn;
 
 // Opaque type for the `this` pointer.
 #[repr(C)] pub(crate) struct RawIEngineTrace { _private: [u8; 0] }
 
-type FnGetPointContents = unsafe extern "thiscall" fn(this: *mut RawIEngineTrace, abs_pos: *const Vector, mask: c_int, entity: *mut *mut c_void) -> c_int;
-type FnClipRayToEntity = unsafe extern "thiscall" fn(this: *mut RawIEngineTrace, ray: *const Ray_t, mask: u32, entity: *mut c_void, trace: *mut Trace_t);
-type FnTraceRay = unsafe extern "thiscall" fn(this: *mut RawIEngineTrace, ray: *const Ray_t, mask: u32, filter: *mut c_void, trace: *mut Trace_t);
-type FnGetCollideable = unsafe extern "thiscall" fn(this: *mut RawIEngineTrace, entity: *mut c_void) -> *mut ICollideable;
+type FnGetPointContents = vfn!((this: *mut RawIEngineTrace, abs_pos: *const Vector, mask: c_int, entity: *mut *mut c_void) -> c_int);
+type FnClipRayToEntity = vfn!((this: *mut RawIEngineTrace, ray: *const Ray_t, mask: u32, entity: *mut c_void, trace: *mut Trace_t));
+type FnTraceRay = vfn!((this: *mut RawIEngineTrace, ray: *const Ray_t, mask: u32, filter: *mut c_void, trace: *mut Trace_t));
+type FnGetCollideable = vfn!((this: *mut RawIEngineTrace, entity: *mut c_void) -> *mut ICollideable);
 
 /// Interface for ray tracing and collision testing.
 pub struct IEngineTrace {

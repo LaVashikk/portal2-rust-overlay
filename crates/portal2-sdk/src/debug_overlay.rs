@@ -1,16 +1,17 @@
 use std::ffi::{c_char, c_int, CString};
 use crate::types::{Vector, QAngle};
+use crate::platform::abi::vfn;
 
 // Opaque type for the `this` pointer.
 #[repr(C)] pub(crate) struct RawIVDebugOverlay { _private: [u8; 0] }
 
-type FnAddBoxOverlay = unsafe extern "thiscall" fn(this: *mut RawIVDebugOverlay, origin: *const Vector, mins: *const Vector, max: *const Vector, orientation: *const QAngle, r: c_int, g: c_int, b: c_int, a: c_int, duration: f32);
-type FnAddSphereOverlay = unsafe extern "thiscall" fn(this: *mut RawIVDebugOverlay, origin: *const Vector, radius: f32, theta: c_int, phi: c_int, r: c_int, g: c_int, b: c_int, a: c_int, duration: f32);
-type FnAddLineOverlay = unsafe extern "thiscall" fn(this: *mut RawIVDebugOverlay, start: *const Vector, end: *const Vector, r: c_int, g: c_int, b: c_int, no_depth_test: bool, duration: f32);
+type FnAddBoxOverlay = vfn!((this: *mut RawIVDebugOverlay, origin: *const Vector, mins: *const Vector, max: *const Vector, orientation: *const QAngle, r: c_int, g: c_int, b: c_int, a: c_int, duration: f32));
+type FnAddSphereOverlay = vfn!((this: *mut RawIVDebugOverlay, origin: *const Vector, radius: f32, theta: c_int, phi: c_int, r: c_int, g: c_int, b: c_int, a: c_int, duration: f32));
+type FnAddLineOverlay = vfn!((this: *mut RawIVDebugOverlay, start: *const Vector, end: *const Vector, r: c_int, g: c_int, b: c_int, no_depth_test: bool, duration: f32));
 type FnAddTextOverlay = unsafe extern "C" fn(this: *mut RawIVDebugOverlay, origin: *const Vector, duration: f32, format: *const c_char, ...);
-type FnAddScreenTextOverlay = unsafe extern "thiscall" fn(this: *mut RawIVDebugOverlay, x: f32, y: f32, duration: f32, r: c_int, g: c_int, b: c_int, a: c_int, text: *const c_char);
-type FnScreenPosition = unsafe extern "thiscall" fn(this: *mut RawIVDebugOverlay, point: *const Vector, screen: *mut Vector) -> c_int;
-type FnClearAllOverlays = unsafe extern "thiscall" fn(this: *mut RawIVDebugOverlay);
+type FnAddScreenTextOverlay = vfn!((this: *mut RawIVDebugOverlay, x: f32, y: f32, duration: f32, r: c_int, g: c_int, b: c_int, a: c_int, text: *const c_char));
+type FnScreenPosition = vfn!((this: *mut RawIVDebugOverlay, point: *const Vector, screen: *mut Vector) -> c_int);
+type FnClearAllOverlays = vfn!((this: *mut RawIVDebugOverlay));
 
 /// Interface for drawing debug shapes and text in the 3D world.
 pub struct IVDebugOverlay {

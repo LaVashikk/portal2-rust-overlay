@@ -1,6 +1,6 @@
 [package]
 name = "portal2-sdk"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 authors = ["LaVashikk <contact@lavashik.dev>"]
 description = "A Rust SDK for Portal 2 modding and plugin development"
@@ -10,11 +10,24 @@ readme = "README.md"
 keywords = ["portal2", "source-engine", "sdk", "gamedev"]
 categories = ["api-bindings", "game-development"]
 
+# Portal 2 is a 32-bit game, and these bindings mirror its ABI: the `thiscall`
+# convention only exists on x86 Windows targets. Left on the docs.rs default
+# (x86_64-unknown-linux-gnu) the build fails outright, so pin it to the platform
+# the crate is actually written against.
+# Note: since 2026-05-01 docs.rs builds *only* the default target unless `targets`
+# is listed explicitly.
+[package.metadata.docs.rs]
+default-target = "i686-pc-windows-msvc"
+targets = ["i686-pc-windows-msvc"]
+
 [dependencies]
 log = "0.4"
 bitflags = "2.5.0"
 
-[dependencies.windows]
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "windows")'.dependencies.windows]
 version = "=0.59"
 features = [
     "Win32_Foundation",

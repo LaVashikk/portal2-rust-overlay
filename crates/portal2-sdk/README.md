@@ -11,8 +11,9 @@ Building upon the foundation of our earlier project, [source-plugin-rs](https://
 
 ## ⚠️ Important Requirements
 
-* **Windows Only:** This SDK interacts directly with the Windows API (`GetProcAddress`, `GetModuleHandleA`, etc.). 
 * **32-Bit (x86) Architecture:** The Source Engine (Portal 2) is a 32-bit application. You **must** compile your projects using the `i686-pc-windows-msvc` or `i686-pc-windows-gnu` Rust targets.
+* **Windows build of the game:** Fully supported, whether run natively or through Proton.
+* **Native Linux build:** Work in progress. The crate compiles for `i686-unknown-linux-gnu` and the loader layer (`platform`) is implemented, but `Engine::initialize()` still depends on Windows-only byte signatures and MSVC vtable layouts, so it returns an error there for now.
 
 ## Core Features
 

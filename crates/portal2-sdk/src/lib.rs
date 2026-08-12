@@ -12,6 +12,17 @@
 //! - **Developer Console Printing**: Direct, formatted printing to the in-game developer console (`~`) with custom RGBA colors via `con_print!` and `con_color_print!`.
 //! - **Engine & Server Interfaces**: Access to `IVEngineClient`, `IVEngineServer`, `IGameEventManager2`, entity systems, ray tracing, and debug overlays.
 //!
+//! ## Platform Support
+//!
+//! Portal 2 is a **32-bit** game, so plugins must be built for a 32-bit target -
+//! `i686-pc-windows-msvc` or `i686-pc-windows-gnu`.
+//!
+//! The **Windows** build is fully supported, natively and under Proton. Support for
+//! the **native Linux** build is in progress: the crate compiles for
+//! `i686-unknown-linux-gnu` and the [`platform`] layer works there, but
+//! [`Engine::initialize`] still resolves everything through Windows-only byte
+//! signatures and MSVC vtable layouts, so it returns an error instead.
+//!
 //! ## Quick Start Examples
 //!
 //! ### 1. Printing to the Developer Console (`~`)
@@ -37,43 +48,43 @@
 //!         con_color_print!(Color::rgb(0, 255, 255), "Teleporting to: {}\n", target);
 //!     } else {
 //!         con_print!("Usage: my_teleport <destination>\n");
-///     }
-/// }
-///
-/// fn setup_commands() {
-///     ConCommand::register_new(
-///         "my_teleport",
-///         "Teleports the player to a target location",
-///         CvarFlags::NONE,
-///         my_teleport_cmd,
-///     ).expect("Failed to register ConCommand");
-/// }
-/// ```
-///
-/// ### 3. Registering a Bounded Console Variable (`ConVar`)
-///
-/// ```rust,no_run
-/// use portal2_sdk::{ConVar, CvarFlags};
-///
-/// fn setup_cvars() {
-///     let fov = ConVar::builder("my_custom_fov", "90.0")
-///         .help_text("Custom field of view setting")
-///         .flags(CvarFlags::ARCHIVE)
-///         .min(60.0)
-///         .max(140.0)
-///         .register()
-///         .expect("Failed to register ConVar");
-///
-///     con_print!("Current custom FOV: {}", fov.get_float());
-/// }
-/// ```
+//!     }
+//! }
+//!
+//! fn setup_commands() {
+//!     ConCommand::register_new(
+//!         "my_teleport",
+//!         "Teleports the player to a target location",
+//!         CvarFlags::NONE,
+//!         my_teleport_cmd,
+//!     ).expect("Failed to register ConCommand");
+//! }
+//! ```
+//!
+//! ### 3. Registering a Bounded Console Variable (`ConVar`)
+//!
+//! ```rust,no_run
+//! use portal2_sdk::{ConVar, CvarFlags, con_print};
+//!
+//! fn setup_cvars() {
+//!     let fov = ConVar::builder("my_custom_fov", "90.0")
+//!         .help_text("Custom field of view setting")
+//!         .flags(CvarFlags::ARCHIVE)
+//!         .min(60.0)
+//!         .max(140.0)
+//!         .register()
+//!         .expect("Failed to register ConVar");
+//!
+//!     con_print!("Current custom FOV: {}", fov.get_float());
+//! }
+//! ```
 use std::sync::OnceLock;
 use std::{ffi::c_void, slice};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 mod signatures;
 pub mod types;
-mod interfaces;
+pub mod platform;
 mod memory;
 mod entities;
 pub mod utils;
@@ -88,6 +99,7 @@ pub mod engine_trace;
 pub mod debug_overlay;
 
 pub use crate::entities::Entities;
+use crate::platform::Module;
 use crate::input_system::IInputStackSystem;
 use crate::server::IVEngineServer;
 use crate::server_tools::IServerTools;
@@ -200,6 +212,15 @@ macro_rules! get_vfunc { // for unique cases
 /// This is the core of the signature-based approach. It must be called once before `get()`.
 impl Engine {
     pub fn initialize() -> Result<&'static Engine, String> {
+        // The byte signatures below were lifted from the Windows binaries, and the
+        // vtable indices follow MSVC's layout. Neither carries over to the native
+        // Linux build, so bail out loudly instead of resolving garbage pointers.
+        // The platform layer itself is ready; see `platform` module docs.
+        if cfg!(not(target_os = "windows")) {
+            return Err("Only the Windows build of Portal 2 is supported so far \
+                        (native Linux support is in progress)".to_string());
+        }
+
         static INITED: AtomicBool = AtomicBool::new(false);
         if INITED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
             return Err("Re-initialization is prohibited!".to_string());
@@ -207,59 +228,59 @@ impl Engine {
 
         // --- Get the base "this" pointers for each interface. ---
         // We use `find_interface` for this, as it's a reliable way to get the
-        // object's address, which is required for all `thiscall` functions.
+        // object's address, which is required for all member function calls.
         let client_this = unsafe {
-            interfaces::find_interface::<c_void>(b"engine.dll\0", b"VEngineClient015\0")
+            platform::find_interface::<c_void>(Module::Engine, c"VEngineClient015")
         };
         if client_this.is_null() {
             return Err("Failed to find IVEngineClient interface pointer.".to_string());
         }
 
         let input_stack_system_this = unsafe {
-            interfaces::find_interface::<c_void>(b"inputsystem.dll\0", b"InputStackSystemVersion001\0")
+            platform::find_interface::<c_void>(Module::InputSystem, c"InputStackSystemVersion001")
         };
         if input_stack_system_this.is_null() {
             return Err("Failed to find IInputStackSystem interface pointer".to_string());
         }
 
         let icvar_this =
-            unsafe { interfaces::find_interface::<c_void>(b"vstdlib.dll\0", b"VEngineCvar007\0") };
+            unsafe { platform::find_interface::<c_void>(Module::VStdLib, c"VEngineCvar007") };
         if icvar_this.is_null() {
             return Err("Failed to find ICvar interface pointer".to_string());
         }
 
         let game_event_manager_this = unsafe {
-            interfaces::find_interface::<c_void>(b"engine.dll\0", b"GAMEEVENTSMANAGER002\0")
+            platform::find_interface::<c_void>(Module::Engine, c"GAMEEVENTSMANAGER002")
         };
         if game_event_manager_this.is_null() {
             return Err("Failed to find IGameEventManager2 interface pointer".to_string());
         }
 
         let engine_server_this = unsafe {
-            interfaces::find_interface::<c_void>(b"engine.dll\0", b"VEngineServer022\0")
+            platform::find_interface::<c_void>(Module::Engine, c"VEngineServer022")
         };
         if engine_server_this.is_null() {
             return Err("Failed to find IVEngineServer interface pointer.".to_string());
         }
 
         let engine_trace_this = unsafe {
-            interfaces::find_interface::<c_void>(b"engine.dll\0", b"EngineTraceServer004\0")
+            platform::find_interface::<c_void>(Module::Engine, c"EngineTraceServer004")
         };
         if engine_trace_this.is_null() {
             return Err("Failed to find IEngineTrace interface pointer.".to_string());
         }
 
         let debug_overlay_this = unsafe {
-            interfaces::find_interface::<c_void>(b"engine.dll\0", b"VDebugOverlay004\0")
+            platform::find_interface::<c_void>(Module::Engine, c"VDebugOverlay004")
         };
         if debug_overlay_this.is_null() {
             return Err("Failed to find IVDebugOverlay interface pointer.".to_string());
         }
 
         // --- Get the memory ranges of the modules to scan. ---
-        let engine_dll = unsafe { memory::get_module_memory_range(b"engine.dll\0") };
-        let inputsystem_dll = unsafe { memory::get_module_memory_range(b"inputsystem.dll\0") };
-        let vstdlib_dll = unsafe { memory::get_module_memory_range(b"vstdlib.dll\0") };
+        let engine_dll = platform::module_range(Module::Engine);
+        let inputsystem_dll = platform::module_range(Module::InputSystem);
+        let vstdlib_dll = platform::module_range(Module::VStdLib);
 
         if engine_dll.is_none() || inputsystem_dll.is_none() || vstdlib_dll.is_none() {
             return Err("Failed to get one or more module memory ranges".to_string());
@@ -522,7 +543,7 @@ impl Engine {
 
     fn initialize_server_tools() -> Option<IServerTools> {
         let server_tools_this = unsafe {
-            interfaces::find_interface::<c_void>(b"server.dll\0", b"VSERVERTOOLS001\0")
+            platform::find_interface::<c_void>(Module::Server, c"VSERVERTOOLS001")
         };
         if server_tools_this.is_null() {
             return None;

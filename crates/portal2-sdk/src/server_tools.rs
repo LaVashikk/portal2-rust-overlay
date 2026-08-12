@@ -4,36 +4,37 @@ use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::ptr;
 
 use crate::types::{CBaseEntity, CEntityRespawnInfo, IClientEntity, IServerEntity, QAngle, Vector};
+use crate::platform::abi::vfn;
 
 // ==========================================================================
 // Raw FFI Function Pointer Types
 // ==========================================================================
 
-type FnGetIServerEntity = unsafe extern "thiscall" fn(this: *mut c_void, p_client_entity: *const IClientEntity) -> *mut IServerEntity;
-type FnSnapPlayerToPosition = unsafe extern "thiscall" fn(this: *mut c_void, org: *const Vector, ang: *const QAngle, p_client_player: *const IClientEntity) -> bool;
-type FnGetPlayerPosition = unsafe extern "thiscall" fn(this: *mut c_void, org: *mut Vector, ang: *mut QAngle, p_client_player: *const IClientEntity) -> bool;
-type FnSetPlayerFOV = unsafe extern "thiscall" fn(this: *mut c_void, fov: c_int, p_client_player: *const IClientEntity) -> bool;
-type FnGetPlayerFOV = unsafe extern "thiscall" fn(this: *mut c_void, p_client_player: *const IClientEntity) -> c_int;
-type FnIsInNoClipMode = unsafe extern "thiscall" fn(this: *mut c_void, p_client_player: *const IClientEntity) -> bool;
+type FnGetIServerEntity = vfn!((this: *mut c_void, p_client_entity: *const IClientEntity) -> *mut IServerEntity);
+type FnSnapPlayerToPosition = vfn!((this: *mut c_void, org: *const Vector, ang: *const QAngle, p_client_player: *const IClientEntity) -> bool);
+type FnGetPlayerPosition = vfn!((this: *mut c_void, org: *mut Vector, ang: *mut QAngle, p_client_player: *const IClientEntity) -> bool);
+type FnSetPlayerFOV = vfn!((this: *mut c_void, fov: c_int, p_client_player: *const IClientEntity) -> bool);
+type FnGetPlayerFOV = vfn!((this: *mut c_void, p_client_player: *const IClientEntity) -> c_int);
+type FnIsInNoClipMode = vfn!((this: *mut c_void, p_client_player: *const IClientEntity) -> bool);
 
-type FnFirstEntity = unsafe extern "thiscall" fn(this: *mut c_void) -> *mut CBaseEntity;
-type FnNextEntity = unsafe extern "thiscall" fn(this: *mut c_void, p_entity: *const CBaseEntity) -> *mut CBaseEntity;
-type FnFindEntityByHammerID = unsafe extern "thiscall" fn(this: *mut c_void, i_hammer_id: c_int) -> *mut CBaseEntity;
+type FnFirstEntity = vfn!((this: *mut c_void) -> *mut CBaseEntity);
+type FnNextEntity = vfn!((this: *mut c_void, p_entity: *const CBaseEntity) -> *mut CBaseEntity);
+type FnFindEntityByHammerID = vfn!((this: *mut c_void, i_hammer_id: c_int) -> *mut CBaseEntity);
 
-type FnGetKeyValue = unsafe extern "thiscall" fn(this: *mut c_void, p_entity: *const CBaseEntity, sz_field: *const c_char, sz_value: *mut c_char, i_max_len: c_int) -> bool;
-type FnSetKeyValueStr = unsafe extern "thiscall" fn(this: *mut c_void, p_entity: *mut CBaseEntity, sz_field: *const c_char, sz_value: *const c_char) -> bool;
-type FnSetKeyValueFlt = unsafe extern "thiscall" fn(this: *mut c_void, p_entity: *mut CBaseEntity, sz_field: *const c_char, fl_value: f32) -> bool;
-type FnSetKeyValueVec = unsafe extern "thiscall" fn(this: *mut c_void, p_entity: *mut CBaseEntity, sz_field: *const c_char, vec_value: *const Vector) -> bool;
+type FnGetKeyValue = vfn!((this: *mut c_void, p_entity: *const CBaseEntity, sz_field: *const c_char, sz_value: *mut c_char, i_max_len: c_int) -> bool);
+type FnSetKeyValueStr = vfn!((this: *mut c_void, p_entity: *mut CBaseEntity, sz_field: *const c_char, sz_value: *const c_char) -> bool);
+type FnSetKeyValueFlt = vfn!((this: *mut c_void, p_entity: *mut CBaseEntity, sz_field: *const c_char, fl_value: f32) -> bool);
+type FnSetKeyValueVec = vfn!((this: *mut c_void, p_entity: *mut CBaseEntity, sz_field: *const c_char, vec_value: *const Vector) -> bool);
 
-type FnCreateEntityByName = unsafe extern "thiscall" fn(this: *mut c_void, sz_class_name: *const c_char) -> *mut CBaseEntity;
-type FnDispatchSpawn = unsafe extern "thiscall" fn(this: *mut c_void, p_entity: *mut CBaseEntity);
-type FnDestroyEntityByHammerId = unsafe extern "thiscall" fn(this: *mut c_void, i_hammer_id: c_int) -> bool;
-type FnRespawnEntitiesWithEdits = unsafe extern "thiscall" fn(this: *mut c_void, p_infos: *mut CEntityRespawnInfo, n_infos: c_int) -> bool;
+type FnCreateEntityByName = vfn!((this: *mut c_void, sz_class_name: *const c_char) -> *mut CBaseEntity);
+type FnDispatchSpawn = vfn!((this: *mut c_void, p_entity: *mut CBaseEntity));
+type FnDestroyEntityByHammerId = vfn!((this: *mut c_void, i_hammer_id: c_int) -> bool);
+type FnRespawnEntitiesWithEdits = vfn!((this: *mut c_void, p_infos: *mut CEntityRespawnInfo, n_infos: c_int) -> bool);
 
-type FnReloadParticleDefintions = unsafe extern "thiscall" fn(this: *mut c_void, p_file_name: *const c_char, p_buf_data: *const c_void, n_len: c_int);
-type FnAddOriginToPVS = unsafe extern "thiscall" fn(this: *mut c_void, org: *const Vector);
-type FnMoveEngineViewTo = unsafe extern "thiscall" fn(this: *mut c_void, v_pos: *const Vector, v_angles: *const QAngle);
-type FnRemoveEntity = unsafe extern "thiscall" fn(this: *mut c_void, n_hammer_id: c_int);
+type FnReloadParticleDefintions = vfn!((this: *mut c_void, p_file_name: *const c_char, p_buf_data: *const c_void, n_len: c_int));
+type FnAddOriginToPVS = vfn!((this: *mut c_void, org: *const Vector));
+type FnMoveEngineViewTo = vfn!((this: *mut c_void, v_pos: *const Vector, v_angles: *const QAngle));
+type FnRemoveEntity = vfn!((this: *mut c_void, n_hammer_id: c_int));
 
 // ==========================================================================
 // Interface Structure

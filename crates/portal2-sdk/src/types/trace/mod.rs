@@ -1,37 +1,47 @@
-/// Usage example:
-/// ```
-/// let e = engine.entities();
-/// let local_player = e.find_by_classname(None, "player");
-///
-/// let server_tools = engine.server_tools();
-/// if let Some((pos, angles)) = server_tools.get_player_position(None) {
-///     let eye_pos = pos;
-///     let forward = angles.to_forward_vector();
-///     let end_pos = eye_pos + (forward * 8192.0);
-///
-///     let trace = engine.engine_trace().line_trace(eye_pos, end_pos, MaskFlags::SOLID, local_player.as_deref());
-///
-///     if trace.did_hit() {
-///         if trace.did_hit_entity() {
-///             log::info!("hit into: {}", trace.hit_entity().unwrap().get_class_name())
-///         } else {
-///             let surf = &trace.surface;
-///             if surf.is_sky() {
-///                 log::info!("Looking at sky: {}", surf.get_name());
-///             } else if surf.is_no_portal() {
-///                 log::info!("Can't place portal here (texture: {})", surf.get_name());
-///             } else {
-///                 log::info!("Looking at {}", surf.get_name());
-///             }
-///         }
-///     }
-/// ```
+//! Ray tracing types: rays, trace results, surfaces and content masks.
+//!
+//! # Usage example
+//!
+//! Casting a ray from the player's eyes and inspecting whatever it hits:
+//!
+//! ```rust,no_run
+//! use portal2_sdk::{get_engine, types::MaskFlags};
+//!
+//! let engine = get_engine();
+//! let entities = engine.entities();
+//! let local_player = entities.find_by_classname(None, "player");
+//!
+//! if let Some((eye_pos, angles)) = engine.server_tools().get_player_position(None) {
+//!     let end_pos = eye_pos + (angles.to_forward_vector() * 8192.0);
+//!
+//!     // Skipping the player itself, otherwise the ray hits his own hitbox.
+//!     let trace = engine.engine_trace()
+//!         .line_trace(eye_pos, end_pos, MaskFlags::SOLID, local_player.as_deref());
+//!
+//!     if trace.did_hit() {
+//!         if trace.did_hit_entity() {
+//!             log::info!("hit into: {}", trace.hit_entity().unwrap().get_class_name());
+//!         } else {
+//!             let surf = &trace.surface;
+//!             if surf.is_sky() {
+//!                 log::info!("Looking at sky: {}", surf.get_name());
+//!             } else if surf.is_no_portal() {
+//!                 log::info!("Can't place portal here (texture: {})", surf.get_name());
+//!             } else {
+//!                 log::info!("Looking at {}", surf.get_name());
+//!             }
+//!         }
+//!     }
+//! }
+//! ```
+
 pub mod masks;
 
 pub use masks::*;
 
 use std::ffi::{c_char, c_int, c_void};
 use super::{Vector, CBaseEntity};
+use crate::platform::abi::{vfn, vfn_impl};
 
 #[repr(C, align(16))]
 #[derive(Debug, Default, Clone, Copy)]
@@ -236,8 +246,8 @@ pub enum TraceTypeT {
 // ITraceFilter VTable bridge
 #[repr(C)]
 pub struct ITraceFilterVTable {
-    pub should_hit_entity: unsafe extern "thiscall" fn(this: *mut c_void, entity: *mut c_void, mask: c_int) -> bool,
-    pub get_trace_type: unsafe extern "thiscall" fn(this: *mut c_void) -> TraceTypeT,
+    pub should_hit_entity: vfn!((this: *mut c_void, entity: *mut c_void, mask: c_int) -> bool),
+    pub get_trace_type: vfn!((this: *mut c_void) -> TraceTypeT),
 }
 
 pub struct TraceFilter {
@@ -250,13 +260,15 @@ static TRACE_FILTER_VTABLE: ITraceFilterVTable = ITraceFilterVTable {
     get_trace_type: trace_filter_get_trace_type,
 };
 
-unsafe extern "thiscall" fn trace_filter_should_hit_entity(_this: *mut c_void, entity: *mut c_void, _mask: c_int) -> bool {
-    let filter = unsafe { &*(_this as *const TraceFilter) };
-    entity != filter.skip
-}
+vfn_impl! {
+    fn trace_filter_should_hit_entity(_this: *mut c_void, entity: *mut c_void, _mask: c_int) -> bool {
+        let filter = unsafe { &*(_this as *const TraceFilter) };
+        entity != filter.skip
+    }
 
-unsafe extern "thiscall" fn trace_filter_get_trace_type(_this: *mut c_void) -> TraceTypeT {
-    TraceTypeT::Everything
+    fn trace_filter_get_trace_type(_this: *mut c_void) -> TraceTypeT {
+        TraceTypeT::Everything
+    }
 }
 
 impl TraceFilter {

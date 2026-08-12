@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ffi::{c_char, c_void, CStr};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{OnceLock, RwLock};
+use crate::platform::abi::{vfn, vfn_impl};
 
 /// A unique ID for a registered listener. Use this to unregister later.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -80,23 +81,26 @@ static MASTER_LISTENER_VTABLE: IGameEventListener2Vtable = IGameEventListener2Vt
     get_event_debug_id: master_listener_get_debug_id,
 };
 
-unsafe extern "thiscall" fn master_listener_fire_game_event(_this: *mut c_void, event: *mut IGameEvent) {
-    if event.is_null() { return; }
-    let safe_event = GameEvent { raw: unsafe { &*event } };
-    let event_name = safe_event.name();
+vfn_impl! {
+    fn master_listener_fire_game_event(_this: *mut c_void, event: *mut IGameEvent) {
+        if event.is_null() { return; }
+        let safe_event = GameEvent { raw: unsafe { &*event } };
+        let event_name = safe_event.name();
 
-    // Dispatch ONLY to listeners interested in THIS specific event
-    if let Ok(registry) = get_registry().read() {
-        if let Some(callbacks) = registry.get(event_name) {
-            for (_, callback) in callbacks {
-                (callback)(&safe_event);
+        // Dispatch ONLY to listeners interested in THIS specific event
+        if let Ok(registry) = get_registry().read() {
+            if let Some(callbacks) = registry.get(event_name) {
+                for (_, callback) in callbacks {
+                    (callback)(&safe_event);
+                }
             }
         }
     }
-}
 
-unsafe extern "thiscall" fn master_listener_destructor(_this: *mut c_void, _flags: i32) {}
-unsafe extern "thiscall" fn master_listener_get_debug_id(_this: *mut c_void) -> i32 { 42 }
+    fn master_listener_destructor(_this: *mut c_void, _flags: i32) {}
+
+    fn master_listener_get_debug_id(_this: *mut c_void) -> i32 { 42 }
+}
 
 // FFI STRUCTURES
 
@@ -117,28 +121,28 @@ impl IGameEvent {
 
 #[repr(C)]
 struct IGameEventVtable {
-    destructor: unsafe extern "thiscall" fn(this: *mut c_void, flags: i32),
-    get_name: unsafe extern "thiscall" fn(this: *mut c_void) -> *const c_char,
-    is_reliable: unsafe extern "thiscall" fn(this: *mut c_void) -> bool,
-    is_local: unsafe extern "thiscall" fn(this: *mut c_void) -> bool,
-    is_empty: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char) -> bool,
-    get_bool: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, default_val: bool) -> bool,
-    get_int: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, default_val: i32) -> i32,
-    get_uint64: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, default_val: u64) -> u64,
-    get_float: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, default_val: f32) -> f32,
-    get_string: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, default_val: *const c_char) -> *const c_char,
-    set_bool: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, val: bool),
-    set_int: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, val: i32),
-    set_uint64: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, val: u64),
-    set_float: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, val: f32),
-    set_string: unsafe extern "thiscall" fn(this: *mut c_void, key_name: *const c_char, val: *const c_char),
+    destructor: vfn!((this: *mut c_void, flags: i32)),
+    get_name: vfn!((this: *mut c_void) -> *const c_char),
+    is_reliable: vfn!((this: *mut c_void) -> bool),
+    is_local: vfn!((this: *mut c_void) -> bool),
+    is_empty: vfn!((this: *mut c_void, key_name: *const c_char) -> bool),
+    get_bool: vfn!((this: *mut c_void, key_name: *const c_char, default_val: bool) -> bool),
+    get_int: vfn!((this: *mut c_void, key_name: *const c_char, default_val: i32) -> i32),
+    get_uint64: vfn!((this: *mut c_void, key_name: *const c_char, default_val: u64) -> u64),
+    get_float: vfn!((this: *mut c_void, key_name: *const c_char, default_val: f32) -> f32),
+    get_string: vfn!((this: *mut c_void, key_name: *const c_char, default_val: *const c_char) -> *const c_char),
+    set_bool: vfn!((this: *mut c_void, key_name: *const c_char, val: bool)),
+    set_int: vfn!((this: *mut c_void, key_name: *const c_char, val: i32)),
+    set_uint64: vfn!((this: *mut c_void, key_name: *const c_char, val: u64)),
+    set_float: vfn!((this: *mut c_void, key_name: *const c_char, val: f32)),
+    set_string: vfn!((this: *mut c_void, key_name: *const c_char, val: *const c_char)),
 }
 
 #[repr(C)]
 pub struct IGameEventManager2 {
     pub(crate) this: *mut c_void,
-    pub(crate) add_listener: unsafe extern "thiscall" fn(this: *mut c_void, listener: *mut c_void, name: *const c_char, server_side: bool) -> bool,
-    pub(crate) remove_listener: unsafe extern "thiscall" fn(this: *mut c_void, listener: *mut c_void),
+    pub(crate) add_listener: vfn!((this: *mut c_void, listener: *mut c_void, name: *const c_char, server_side: bool) -> bool),
+    pub(crate) remove_listener: vfn!((this: *mut c_void, listener: *mut c_void)),
     /// The listener instance. Injected during initialization.
     pub(crate) listener: *mut MasterListener,
 }
@@ -192,9 +196,9 @@ impl IGameEventManager2 {
 
 #[repr(C)]
 struct IGameEventListener2Vtable {
-    pub destructor: unsafe extern "thiscall" fn(this: *mut c_void, flags: i32),
-    pub fire_game_event: unsafe extern "thiscall" fn(this: *mut c_void, event: *mut IGameEvent),
-    pub get_event_debug_id: unsafe extern "thiscall" fn(this: *mut c_void) -> i32,
+    pub destructor: vfn!((this: *mut c_void, flags: i32)),
+    pub fire_game_event: vfn!((this: *mut c_void, event: *mut IGameEvent)),
+    pub get_event_debug_id: vfn!((this: *mut c_void) -> i32),
 }
 
 pub fn create_master_listener() -> *mut MasterListener {

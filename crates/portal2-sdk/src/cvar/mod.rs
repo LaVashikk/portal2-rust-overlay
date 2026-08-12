@@ -1,5 +1,6 @@
 #![allow(unused)]
 use std::ffi::{c_char, c_int, c_void, CStr};
+use crate::platform::abi::vfn;
 
 mod flags;
 mod convar;
@@ -69,13 +70,13 @@ impl Color {
     }
 }
 
-type FnSetValueStr = unsafe extern "thiscall" fn(this: *mut ConVar, value: *const c_char);
-type FnSetValueFloat = unsafe extern "thiscall" fn(this: *mut ConVar, value: f32);
-type FnSetValueInt = unsafe extern "thiscall" fn(this: *mut ConVar, value: i32);
-type FnFindVar = unsafe extern "thiscall" fn(this: *mut RawICvar, var_name: *const c_char) -> *mut ConVar;
-type FnFindCommandBase = unsafe extern "thiscall" fn(this: *mut RawICvar, name: *const c_char) -> *mut ConCommandBase;
-type FnRegisterConCommand = unsafe extern "thiscall" fn(this: *mut RawICvar, base: *mut ConCommandBase);
-type FnUnregisterConCommand = unsafe extern "thiscall" fn(this: *mut RawICvar, base: *mut ConCommandBase);
+type FnSetValueStr = vfn!((this: *mut ConVar, value: *const c_char));
+type FnSetValueFloat = vfn!((this: *mut ConVar, value: f32));
+type FnSetValueInt = vfn!((this: *mut ConVar, value: i32));
+type FnFindVar = vfn!((this: *mut RawICvar, var_name: *const c_char) -> *mut ConVar);
+type FnFindCommandBase = vfn!((this: *mut RawICvar, name: *const c_char) -> *mut ConCommandBase);
+type FnRegisterConCommand = vfn!((this: *mut RawICvar, base: *mut ConCommandBase));
+type FnUnregisterConCommand = vfn!((this: *mut RawICvar, base: *mut ConCommandBase));
 type FnConsoleColorPrintf = unsafe extern "C" fn(this: *mut RawICvar, color: *const Color, format: *const c_char, msg: *const c_char);
 type FnConsolePrintf = unsafe extern "C" fn(this: *mut RawICvar, format: *const c_char, msg: *const c_char);
 
@@ -108,7 +109,7 @@ impl ConCommandBase {
 
     /// Checks if this `ConCommandBase` is an executable command (`ConCommand`) rather than a variable (`ConVar`).
     pub fn is_command(&self) -> bool {
-        type FnIsCommand = unsafe extern "thiscall" fn(this: *const ConCommandBase) -> bool;
+        type FnIsCommand = vfn!((this: *const ConCommandBase) -> bool);
         unsafe {
             let vtable = *(self.vtable as *const *const usize);
             let func_ptr = vtable.add(1).read();
@@ -146,7 +147,7 @@ impl ConCommandBase {
 /// # Example
 ///
 /// ```rust,no_run
-/// use portal2_sdk::CCommand;
+/// use portal2_sdk::{CCommand, con_print};
 ///
 /// extern "C" fn my_callback(cmd: &CCommand) {
 ///     // Total arguments including command name at index 0:
@@ -190,7 +191,7 @@ impl CCommand {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use portal2_sdk::CCommand;
+    /// # use portal2_sdk::{CCommand, con_print};
     /// # let cmd: &CCommand = unsafe { std::mem::zeroed() };
     /// match cmd.arg(1) {
     ///     Some("on") => con_print!("Enabled"),
@@ -302,6 +303,7 @@ impl ICvar {
     /// # Example
     ///
     /// ```rust,no_run
+    /// # use portal2_sdk::con_print;
     /// # let cvar_system = portal2_sdk::get_engine().cvar_system();
     /// if let Some(base) = cvar_system.find_command_base("echo") {
     ///     con_print!("Command/Var exists: {}", base.get_name());

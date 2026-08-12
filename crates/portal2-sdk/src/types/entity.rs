@@ -1,5 +1,6 @@
 use std::ffi::{CStr, c_char, c_int};
 use super::{Vector, QAngle, SendTable};
+use crate::platform::abi::vfn;
 
 /// A unique identifier for a networkable entity. It combines an entity index
 /// with a serial number to prevent stale handles from referring to new entities
@@ -47,7 +48,7 @@ impl IServerNetworkable {
     pub fn get_server_class<'a>(&self) -> Option<&'a mut ServerClass> {
         unsafe {
             let vtable = *(self as *const _ as *const *const usize);
-            let get_class: unsafe extern "thiscall" fn(*const IServerNetworkable) -> *mut ServerClass = std::mem::transmute(vtable.add(1).read());
+            let get_class: vfn!((*const IServerNetworkable) -> *mut ServerClass) = std::mem::transmute(vtable.add(1).read());
             let ptr = get_class(self);
             if ptr.is_null() { None } else { Some(&mut *ptr) }
         }
@@ -57,7 +58,7 @@ impl IServerNetworkable {
     pub fn get_edict<'a>(&self) -> Option<&'a mut Edict> {
         unsafe {
             let vtable = *(self as *const _ as *const *const usize);
-            let get_edict: unsafe extern "thiscall" fn(*const IServerNetworkable) -> *mut Edict = std::mem::transmute(vtable.add(2).read());
+            let get_edict: vfn!((*const IServerNetworkable) -> *mut Edict) = std::mem::transmute(vtable.add(2).read());
             let ptr = get_edict(self);
             if ptr.is_null() { None } else { Some(&mut *ptr) }
         }
@@ -67,7 +68,7 @@ impl IServerNetworkable {
     pub fn get_class_name(&self) -> String {
         unsafe {
             let vtable = *(self as *const _ as *const *const usize);
-            let get_name: unsafe extern "thiscall" fn(*const IServerNetworkable) -> *const c_char = std::mem::transmute(vtable.add(3).read());
+            let get_name: vfn!((*const IServerNetworkable) -> *const c_char) = std::mem::transmute(vtable.add(3).read());
             let ptr = get_name(self);
             if ptr.is_null() { String::new() } else { CStr::from_ptr(ptr).to_string_lossy().into_owned() }
         }
@@ -97,7 +98,7 @@ impl IServerEntity {
     pub fn get_collideable<'a>(&self) -> Option<&'a mut ICollideable> {
         unsafe {
             let vtable = *(self as *const _ as *const *const usize);
-            let get_col: unsafe extern "thiscall" fn(*const IServerEntity) -> *mut ICollideable = std::mem::transmute(vtable.add(3).read());
+            let get_col: vfn!((*const IServerEntity) -> *mut ICollideable) = std::mem::transmute(vtable.add(3).read());
             let ptr = get_col(self);
             if ptr.is_null() { None } else { Some(&mut *ptr) }
         }
@@ -107,7 +108,7 @@ impl IServerEntity {
     pub fn get_networkable<'a>(&self) -> Option<&'a mut IServerNetworkable> {
         unsafe {
             let vtable = *(self as *const _ as *const *const usize);
-            let get_net: unsafe extern "thiscall" fn(*const IServerEntity) -> *mut IServerNetworkable = std::mem::transmute(vtable.add(4).read());
+            let get_net: vfn!((*const IServerEntity) -> *mut IServerNetworkable) = std::mem::transmute(vtable.add(4).read());
             let ptr = get_net(self);
             if ptr.is_null() { None } else { Some(&mut *ptr) }
         }
@@ -117,7 +118,7 @@ impl IServerEntity {
     pub fn get_handle(&self) -> CBaseHandle {
         unsafe {
             let vtable = *(self as *const _ as *const *const usize);
-            let get_handle: unsafe extern "thiscall" fn(*const IServerEntity) -> CBaseHandle = std::mem::transmute(vtable.add(2).read());
+            let get_handle: vfn!((*const IServerEntity) -> CBaseHandle) = std::mem::transmute(vtable.add(2).read());
             get_handle(self)
         }
     }
@@ -126,7 +127,7 @@ impl IServerEntity {
     pub fn get_model_index(&self) -> i32 {
         unsafe {
             let vtable = *(self as *const _ as *const *const usize);
-            let get_idx: unsafe extern "thiscall" fn(*const IServerEntity) -> c_int = std::mem::transmute(vtable.add(6).read());
+            let get_idx: vfn!((*const IServerEntity) -> c_int) = std::mem::transmute(vtable.add(6).read());
             get_idx(self)
         }
     }

@@ -56,7 +56,7 @@ bitflags! {
         const REPLICATED = 1 << 13;
         /// Only useable in singleplayer / debug / multiplayer & sv_cheats.
         const CHEAT = 1 << 14;
-        /// This var isn't archived, but is exposed to players—and its use is allowed in competitive play.
+        /// This var isn't archived, but is exposed to players-and its use is allowed in competitive play.
         const INTERNAL_USE = 1 << 15;
         /// Record this cvar when starting a demo file.
         const DEMO = 1 << 16;

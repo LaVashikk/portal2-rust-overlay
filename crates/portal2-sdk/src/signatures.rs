@@ -1,3 +1,10 @@
+//! Byte signatures for functions the engine does not expose through a vtable.
+//!
+//! Scraped from the **Windows** build of Portal 2 and only valid there - the
+//! native Linux build is a different compiler's output entirely. Its equivalent
+//! will not be a second set of patterns, though: Valve's Linux modules keep their
+//! mangled symbols, so functions can be resolved with `dlsym` instead of scanned.
+
 // Signatures for IVEngineClient
 pub mod iv_engine_client {
     pub const SERVER_CMD_PATTERN: &[u8] = b"\x55\x8B\xEC\x8B\x45\x08\x81\xEC\x08\x06\x00\x00\x50\x68\x2C\x57\x47\x0B\x8D\x8D\x00\xFF\xFF\xFF\x68\xFF\x00\x00\x00\x51\xE8\x4D\x10\x20\x00\x83\xC4\x10\x8D\x8D\xF8\xF9\xFF\xFF\xE8\x4F\xF1\x1F\x00\x6A\x00\x8D\x95\x00\xFF\xFF\xFF\x52\x8D\x8D\xF8\xF9\xFF\xFF";

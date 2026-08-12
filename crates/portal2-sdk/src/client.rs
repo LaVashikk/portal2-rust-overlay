@@ -3,30 +3,31 @@ use std::ffi::{c_char, c_int, CStr, CString};
 use crate::types::ModelT;
 
 use super::types::{PlayerInfo, QAngle};
+use crate::platform::abi::vfn;
 
 // Opaque type for the `this` pointer.
 #[repr(C)] pub(crate) struct RawIVEngineClient { _private: [u8; 0] }
 
-type FnGetScreenSize = unsafe extern "thiscall" fn(this: *const IVEngineClient, w: *mut c_int, h: *mut c_int);
-type FnServerCmd = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient, cmd: *const c_char, reliable: bool);
-type FnClientCmd = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient, cmd: *const c_char);
-type FnGetPlayerInfo = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient, ent_num: c_int, p_info: *mut PlayerInfo) -> bool;
-type FnGetPlayerForUserID = unsafe extern "thiscall" fn(this: *const RawIVEngineClient, user_id: c_int) -> c_int;
-type FnGetLastTimeStamp = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient) -> f32;
-type FnGetViewAngles = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient, va: *mut QAngle);
-type FnSetViewAngles = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient, va: *const QAngle);
-type FnGetMaxClients = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient) -> c_int;
-type FnIsInGame = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient) -> bool;
-type FnIsConnected = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient) -> bool;
-type FnIsDrawingLoadingImage = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient) -> bool;
-type FnGetLevelName = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient) -> *const c_char;
-type FnExecuteClientCmdUnrestricted = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient, cmd: *const c_char);
-type FnIsSinglplayer = unsafe extern "thiscall" fn(this: *mut RawIVEngineClient) -> bool;
-type FnConIsVisible = unsafe extern "thiscall" fn(this: *const RawIVEngineClient) -> bool;
-type FnGetLocalPlayer = unsafe extern "thiscall" fn(this: *const RawIVEngineClient) -> c_int;
-type FnLoadModel = unsafe extern "thiscall" fn(this: *const RawIVEngineClient, name: *const c_char, is_prop: bool) -> *const ModelT;
-type FnKeyLookupBinding = unsafe extern "thiscall" fn(this: *const RawIVEngineClient, binding: *const c_char) -> *const c_char;
-type FnIsPaused = unsafe extern "thiscall" fn(this: *const RawIVEngineClient) -> bool;
+type FnGetScreenSize = vfn!((this: *const IVEngineClient, w: *mut c_int, h: *mut c_int));
+type FnServerCmd = vfn!((this: *mut RawIVEngineClient, cmd: *const c_char, reliable: bool));
+type FnClientCmd = vfn!((this: *mut RawIVEngineClient, cmd: *const c_char));
+type FnGetPlayerInfo = vfn!((this: *mut RawIVEngineClient, ent_num: c_int, p_info: *mut PlayerInfo) -> bool);
+type FnGetPlayerForUserID = vfn!((this: *const RawIVEngineClient, user_id: c_int) -> c_int);
+type FnGetLastTimeStamp = vfn!((this: *mut RawIVEngineClient) -> f32);
+type FnGetViewAngles = vfn!((this: *mut RawIVEngineClient, va: *mut QAngle));
+type FnSetViewAngles = vfn!((this: *mut RawIVEngineClient, va: *const QAngle));
+type FnGetMaxClients = vfn!((this: *mut RawIVEngineClient) -> c_int);
+type FnIsInGame = vfn!((this: *mut RawIVEngineClient) -> bool);
+type FnIsConnected = vfn!((this: *mut RawIVEngineClient) -> bool);
+type FnIsDrawingLoadingImage = vfn!((this: *mut RawIVEngineClient) -> bool);
+type FnGetLevelName = vfn!((this: *mut RawIVEngineClient) -> *const c_char);
+type FnExecuteClientCmdUnrestricted = vfn!((this: *mut RawIVEngineClient, cmd: *const c_char));
+type FnIsSinglplayer = vfn!((this: *mut RawIVEngineClient) -> bool);
+type FnConIsVisible = vfn!((this: *const RawIVEngineClient) -> bool);
+type FnGetLocalPlayer = vfn!((this: *const RawIVEngineClient) -> c_int);
+type FnLoadModel = vfn!((this: *const RawIVEngineClient, name: *const c_char, is_prop: bool) -> *const ModelT);
+type FnKeyLookupBinding = vfn!((this: *const RawIVEngineClient, binding: *const c_char) -> *const c_char);
+type FnIsPaused = vfn!((this: *const RawIVEngineClient) -> bool);
 
 /// Represents an instance of the IVEngineClient interface.
 /// Instead of a vtable, it holds a 'this' pointer to the C++ object

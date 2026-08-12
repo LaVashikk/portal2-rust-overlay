@@ -1,38 +1,9 @@
-use windows::Win32::System::LibraryLoader::GetModuleHandleA;
-use windows::Win32::System::ProcessStatus::{GetModuleInformation, MODULEINFO};
-use windows::Win32::System::Threading::GetCurrentProcess;
-use windows::core::PCSTR;
-
-/// Returns the base address and size of a module in memory.
-/// `module_name` must be a null-terminated string, e.g., b"engine.dll\0".
-pub unsafe fn get_module_memory_range(module_name: &'static [u8]) -> Option<(*const u8, usize)> {
-    // 1. Get the module handle
-    let module_handle = match unsafe { GetModuleHandleA(PCSTR(module_name.as_ptr())) } {
-        Ok(handle) if !handle.is_invalid() => handle,
-        _ => return None,
-    };
-
-    // 2. Get module information (base address, size)
-    let mut module_info = MODULEINFO::default();
-    let process_handle = unsafe { GetCurrentProcess() };
-
-    if unsafe { GetModuleInformation(
-        process_handle,
-        module_handle,
-        &mut module_info,
-        std::mem::size_of::<MODULEINFO>() as u32,
-    ).is_ok() } {
-        let base = module_info.lpBaseOfDll as *const u8;
-        let size = module_info.SizeOfImage as usize;
-        Some((base, size))
-    } else {
-        None
-    }
-}
-
 /// Searches for a byte pattern in a memory slice using a mask.
 /// `?` in the mask means "any byte".
 /// `x` in the mask means "the byte must match".
+///
+/// Returns `None` if `pattern` and `mask` disagree in length, so a typo in a
+/// signature surfaces as "not found" rather than a bogus match.
 pub fn find_pattern(memory: &[u8], pattern: &[u8], mask: &str) -> Option<usize> {
     // The length of the pattern and mask must be the same
     if pattern.len() != mask.len() {
@@ -60,4 +31,45 @@ pub fn find_pattern(memory: &[u8], pattern: &[u8], mask: &str) -> Option<usize> 
 
     // If nothing is found
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::find_pattern;
+
+    #[test]
+    fn matches_exact_pattern() {
+        let memory = b"\x00\x11\x55\x8B\xEC\x22";
+        assert_eq!(find_pattern(memory, b"\x55\x8B\xEC", "xxx"), Some(2));
+    }
+
+    #[test]
+    fn wildcards_skip_bytes() {
+        let memory = b"\xE8\x3B\x4D\x02\x00\xD9";
+        assert_eq!(find_pattern(memory, b"\xE8\x00\x00\x00\x00\xD9", "x????x"), Some(0));
+    }
+
+    #[test]
+    fn reports_first_match_only() {
+        let memory = b"\x90\x90\x90";
+        assert_eq!(find_pattern(memory, b"\x90", "x"), Some(0));
+    }
+
+    #[test]
+    fn rejects_mask_length_mismatch() {
+        let memory = b"\x55\x8B\xEC";
+        assert_eq!(find_pattern(memory, b"\x55\x8B\xEC", "xx"), None);
+    }
+
+    #[test]
+    fn no_match_returns_none() {
+        assert_eq!(find_pattern(b"\x01\x02", b"\x03\x04", "xx"), None);
+    }
+
+    /// A pattern longer than the haystack must not panic - `windows()` yields
+    /// nothing in that case.
+    #[test]
+    fn pattern_longer_than_memory() {
+        assert_eq!(find_pattern(b"\x55", b"\x55\x8B", "xx"), None);
+    }
 }
